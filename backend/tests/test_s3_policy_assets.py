@@ -1,0 +1,30 @@
+import json
+from pathlib import Path
+
+
+def test_beta_bucket_template_is_private_encrypted_and_scoped():
+    root = Path(__file__).resolve().parents[2]
+    template = json.loads((root / "deploy/aws/private-buckets.template.json").read_text())
+    resources = template["Resources"]
+    for name in ("ExportBucket", "BackupBucket"):
+        settings = resources[name]["Properties"]
+        assert all(settings["PublicAccessBlockConfiguration"].values())
+        assert (
+            settings["BucketEncryption"]["ServerSideEncryptionConfiguration"][0][
+                "ServerSideEncryptionByDefault"
+            ]["SSEAlgorithm"]
+            == "AES256"
+        )
+        assert settings["OwnershipControls"]["Rules"][0]["ObjectOwnership"] == "BucketOwnerEnforced"
+    for name in ("ExportBucketPolicy", "BackupBucketPolicy"):
+        statements = resources[name]["Properties"]["PolicyDocument"]["Statement"]
+        assert {item["Sid"] for item in statements} == {
+            "DenyInsecureTransport",
+            "DenyUnencryptedUploads",
+        }
+        assert all(item["Effect"] == "Deny" for item in statements)
+    export_actions = resources["ExportAccessPolicy"]["Properties"]["PolicyDocument"]["Statement"]
+    backup_actions = resources["BackupAccessPolicy"]["Properties"]["PolicyDocument"]["Statement"]
+    assert export_actions[0]["Resource"]["Fn::Sub"].endswith("/exports/*")
+    assert backup_actions[0]["Resource"]["Fn::Sub"].endswith("/backups/postgres/*")
+    assert "s3:DeleteObject" not in export_actions[0]["Action"]

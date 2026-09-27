@@ -7,7 +7,9 @@ from rest_framework.views import APIView
 from accounts.models import Workspace
 from accounts.permissions import WorkspaceDataPermission
 from core.audit import record_event
-from ipos.models import IPO, IPOUserDecision
+from ipos.gmp_effective import latest_effective_gmp
+from ipos.models import IPOUserDecision
+from ipos.overrides import effective_ipo_values, published_ipos
 from ipos.public_serializers import gmp_percent
 from ipos.selection import select_ipo
 
@@ -33,13 +35,12 @@ class WorkspaceIPOListView(APIView):
             item.ipo_id: item for item in IPOUserDecision.objects.filter(workspace=workspace)
         }
         rows = []
-        ipos = IPO.objects.filter(publication_state=IPO.PublicationState.PUBLISHED).order_by(
-            "open_date", "id"
-        )
+        ipos = published_ipos().order_by("open_date", "id")
         for ipo in ipos:
-            latest = ipo.gmp_observations.first()
+            latest = latest_effective_gmp(ipo)
+            effective = effective_ipo_values(ipo)
             current_percent = (
-                gmp_percent(latest.value_per_share, ipo.upper_price) if latest else None
+                gmp_percent(latest.value_per_share, effective["upper_price"]) if latest else None
             )
             stored = decisions.get(ipo.pk)
             decision = stored.decision if stored else IPOUserDecision.Decision.DEFAULT
@@ -68,9 +69,7 @@ class WorkspaceIPODecisionView(APIView):
         workspace = get_object_or_404(
             Workspace.objects.filter(memberships__user=request.user), pk=workspace_id
         )
-        ipo = get_object_or_404(
-            IPO.objects.filter(publication_state=IPO.PublicationState.PUBLISHED), pk=ipo_id
-        )
+        ipo = get_object_or_404(published_ipos(), pk=ipo_id)
         serializer = ManualDecisionSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         with transaction.atomic():
@@ -93,8 +92,9 @@ class WorkspaceIPODecisionView(APIView):
                     "mode": decision.mode,
                 },
             )
-        latest = ipo.gmp_observations.first()
-        current_percent = gmp_percent(latest.value_per_share, ipo.upper_price) if latest else None
+        latest = latest_effective_gmp(ipo)
+        upper = effective_ipo_values(ipo)["upper_price"]
+        current_percent = gmp_percent(latest.value_per_share, upper) if latest else None
         selected, reason = select_ipo(
             decision=decision.decision,
             gmp_percent=current_percent,

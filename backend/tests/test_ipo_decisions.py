@@ -46,6 +46,22 @@ def test_manual_choices_outrank_threshold_and_unset_values_are_not_selected():
     )
 
 
+@pytest.mark.parametrize(
+    ("case", "decision", "gmp", "expected"),
+    [
+        ("IS-001", "DEFAULT", "25", True),
+        ("IS-002", "DEFAULT", "12", False),
+        ("IS-003", "APPLY", "8", True),
+        ("IS-004", "SKIP", "35", False),
+        ("IS-005", "SKIP", "40", False),
+        ("IS-006", "DEFAULT", "30", True),
+    ],
+)
+def test_matrix_selection_cases(case, decision, gmp, expected):
+    selected, _ = select_ipo(decision=decision, gmp_percent=Decimal(gmp), threshold=Decimal("20"))
+    assert selected is expected, case
+
+
 @pytest.mark.django_db
 def test_ipo_manual_apply_skip_persists_and_overrides_workspace_threshold():
     owner = User.objects.create_user(email="owner@example.test")

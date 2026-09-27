@@ -97,6 +97,7 @@ export default async function IPOsPage() {
           </details>
         </article>)}
       </div>
+      {workspace && <p><Link className="button-link" href="/plan">Review plan</Link></p>}
       <p><Link href="/">Home</Link></p>
     </div>
   </main>;

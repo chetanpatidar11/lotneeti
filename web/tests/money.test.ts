@@ -7,4 +7,5 @@ test("bank amounts use Indian grouping and plain balance action labels", () => {
   assert.equal(balanceActionLabel("ADD"), "+ Add Money");
   assert.equal(balanceActionLabel("REMOVE"), "- Remove Money");
   assert.equal(balanceActionLabel("SET"), "Set Balance");
+  assert.equal(balanceActionLabel("ALLOTMENT"), "Allotment cost");
 });

@@ -16,6 +16,7 @@ node_modules/
 out/
 coverage/
 *.tsbuildinfo
+mobile/dist/
 
 dist/
 build/

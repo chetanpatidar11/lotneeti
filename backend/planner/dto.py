@@ -20,6 +20,11 @@ class IPOInput:
     cutoff_at: datetime
     allotment_date: date
     mode: str
+    shni_cutoff_at: datetime | None = None
+
+
+def application_cutoff(ipo: IPOInput, category: str) -> datetime:
+    return ipo.shni_cutoff_at if category == "SHNI" and ipo.shni_cutoff_at else ipo.cutoff_at
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,6 +102,14 @@ class RollingUsageInput:
 
 
 @dataclass(frozen=True, slots=True)
+class ExistingApplicationInput:
+    id: str
+    ipo_id: str
+    applicant_id: str
+    cancelled: bool
+
+
+@dataclass(frozen=True, slots=True)
 class LockedRowInput:
     id: str
     ipo_id: str
@@ -120,6 +133,7 @@ class PlannerConfig:
     bank_amount_limit: Decimal = Decimal("500000.00")
     rolling_window_hours: int = 24
     bank_level_enforcement: bool = True
+    plan_cross_funding_override: str = "DEFAULT"
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,6 +149,7 @@ class PlannerSnapshot:
     recurring_debits: tuple[RecurringDebitInput, ...] = ()
     cash_blocks: tuple[CashBlockInput, ...] = ()
     rolling_usage: tuple[RollingUsageInput, ...] = ()
+    existing_applications: tuple[ExistingApplicationInput, ...] = ()
     locked_rows: tuple[LockedRowInput, ...] = ()
 
     def __post_init__(self):
@@ -175,7 +190,5 @@ def _canonical(value):
     raise TypeError(f"Unsupported planner input type: {type(value).__name__}")
 
 
-def canonical_json(snapshot: PlannerSnapshot) -> str:
-    return json.dumps(
-        _canonical(snapshot), sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    )
+def canonical_json(value: object) -> str:
+    return json.dumps(_canonical(value), sort_keys=True, separators=(",", ":"), ensure_ascii=False)

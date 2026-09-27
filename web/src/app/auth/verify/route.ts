@@ -9,7 +9,10 @@ export async function GET(request: NextRequest) {
   try {
     const response = await fetch(backendUrl("auth/email/verify/"), {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: {
+        "content-type": "application/json",
+        ...(request.headers.get("x-real-ip") ? { "x-real-ip": request.headers.get("x-real-ip")! } : {}),
+      },
       body: JSON.stringify({ token }),
       cache: "no-store",
     });

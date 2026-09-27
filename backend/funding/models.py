@@ -69,9 +69,10 @@ class BalanceChange(models.Model):
         ADD = "ADD", "Add Money"
         REMOVE = "REMOVE", "Remove Money"
         SET = "SET", "Set Balance"
+        ALLOTMENT = "ALLOTMENT", "Allotment cost"
 
     bank = models.ForeignKey(BankAccount, on_delete=models.PROTECT, related_name="balance_changes")
-    operation = models.CharField(max_length=6, choices=Operation.choices)
+    operation = models.CharField(max_length=9, choices=Operation.choices)
     old_balance = models.DecimalField(max_digits=14, decimal_places=2)
     delta = models.DecimalField(max_digits=14, decimal_places=2)
     new_balance = models.DecimalField(max_digits=14, decimal_places=2)

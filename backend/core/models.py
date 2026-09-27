@@ -28,3 +28,23 @@ class AuditEvent(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValueError("Audit events cannot be deleted")
+
+
+class BetaEvent(models.Model):
+    class Type(models.TextChoices):
+        ACTIVATED = "ACTIVATED"
+        PLAN_GENERATED = "PLAN_GENERATED"
+        PLAN_EDITED = "PLAN_EDITED"
+        EXPORT_GENERATED = "EXPORT_GENERATED"
+        ALLOTMENT_RECORDED = "ALLOTMENT_RECORDED"
+        PNL_COMPLETED = "PNL_COMPLETED"
+
+    workspace = models.ForeignKey("accounts.Workspace", on_delete=models.CASCADE)
+    event_type = models.CharField(max_length=32, choices=Type.choices)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=["event_type", "created_at"])]
+
+    def __str__(self):
+        return self.event_type

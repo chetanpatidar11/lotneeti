@@ -20,19 +20,25 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "rest_framework",
     "accounts",
+    "applications",
     "core",
+    "exports",
     "funding",
     "investors",
     "ipos",
+    "planner",
     "platform_admin",
+    "portfolio",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "core.observability.RequestLogMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "core.rate_limit.RateLimitMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -98,6 +104,20 @@ CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = TIME_ZONE
+PLANNER_PLATFORM_CROSS_FUNDING_POLICY = os.environ.get("PLANNER_PLATFORM_CROSS_FUNDING_POLICY")
+EXPORT_S3_BUCKET = os.environ.get("EXPORT_S3_BUCKET")
+RATE_LIMIT_ENABLED = True
+RATE_LIMIT_TRUSTED_PROXY_IPS: set[str] = set()
+# Requests per 60-second fixed window, grouped by user or trusted client IP.
+RATE_LIMIT_RULES = {
+    "auth_start": (5, 60),
+    "auth_verify": (20, 60),
+    "admin_login": (5, 60),
+    "admin": (120, 60),
+    "import": (5, 60),
+    "export": (10, 60),
+    "planner": (30, 60),
+}
 CELERY_BEAT_SCHEDULE = {
     "post-due-recurring-debits": {
         "task": "funding.tasks.run_due_recurring_debits",

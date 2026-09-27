@@ -9,8 +9,10 @@ from decimal import Decimal
 
 from django.utils import timezone
 
+from core.observability import logged_provider_operation
 from ipos.dto import IPORecord
 from ipos.models import IPO, GMPObservation
+from ipos.provider_health import record_provider_failure, record_provider_success
 
 
 class ManualIPOProvider:
@@ -26,6 +28,7 @@ class ManualIPOProvider:
             observed_at=observed_at,
         )
 
+    @logged_provider_operation("manual_ipo", "create")
     def create(self, fields: dict) -> IPO:
         record = self.normalize(
             fields, source_record_id=str(uuid.uuid4()), observed_at=timezone.now()
@@ -34,6 +37,7 @@ class ManualIPOProvider:
         ipo.save()
         return ipo
 
+    @logged_provider_operation("manual_ipo", "update")
     def update(self, ipo: IPO, fields: dict) -> IPO:
         if ipo.source_key != self.key:
             raise ValueError("Only manual IPO records can be edited by this provider")
@@ -68,6 +72,7 @@ class ManualIPOProvider:
 class ManualGMPProvider:
     key = "manual"
 
+    @logged_provider_operation("manual_gmp", "record")
     def record(
         self,
         *,
@@ -94,5 +99,10 @@ class ManualGMPProvider:
             source_payload_hash=hashlib.sha256(encoded).hexdigest(),
             recorded_by=recorded_by,
         )
-        observation.save()
+        try:
+            observation.save()
+        except Exception as exc:
+            record_provider_failure(provider_key=self.key, error=exc)
+            raise
+        record_provider_success(provider_key=self.key, observed_at=observed_at)
         return observation

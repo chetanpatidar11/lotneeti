@@ -1,0 +1,23 @@
+{% extends "admin/index.html" %}
+{% load i18n %}
+
+{% block content %}
+<section aria-label="Staff areas" style="margin-bottom: 2rem">
+  <h1>Staff areas</h1>
+  <ul>
+    <li><a href="{% url 'founder_admin:ipos_ipo_changelist' %}">IPO master</a></li>
+    <li><a href="{% url 'founder_admin:ipo-overrides' %}">IPO field corrections</a></li>
+    <li><a href="{% url 'founder_admin:gmp-providers' %}">GMP provider health</a></li>
+    <li><a href="{% url 'founder_admin:gmp-observations' %}">GMP source observations</a></li>
+    <li><a href="{% url 'founder_admin:ai-content' %}">AI content review</a></li>
+    <li><a href="{% url 'founder_admin:planner-policies' %}">Planner policies</a></li>
+    <li><a href="{% url 'founder_admin:ipos_gmpobservation_changelist' %}">GMP history</a></li>
+    <li><a href="{% url 'founder_admin:accounts_user_changelist' %}">Users and workspaces</a></li>
+    <li><a href="{% url 'founder_admin:planner_planrun_changelist' %}">Planner runs</a></li>
+    <li><a href="{% url 'founder_admin:core_auditevent_changelist' %}">Security audit</a></li>
+    <li><a href="{% url 'founder_admin:core_betaevent_changelist' %}">Beta milestones</a></li>
+    <li><a href="{% url 'founder_admin:support-workspaces' %}">Workspace support lookup</a></li>
+  </ul>
+</section>
+{{ block.super }}
+{% endblock %}

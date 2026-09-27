@@ -133,9 +133,9 @@ export default function ScheduledPayments({
               <span><strong>{payment.name}</strong><br /><small>{payment.frequency.toLowerCase()} · Next {payment.next_due_date} · {payment.active ? "Active" : "Paused"}</small></span>
               <span>{formatInr(payment.amount)}<br />
                 {canEdit && <span className="payment-buttons">
-                  <button type="button" disabled={busy} onClick={() => startEdit(payment)}>Edit</button>
-                  <button type="button" disabled={busy} onClick={() => toggleActive(payment)}>{payment.active ? "Pause" : "Resume"}</button>
-                  <button type="button" disabled={busy} onClick={() => remove(payment)}>Delete</button>
+                  <button type="button" aria-label={`Edit ${payment.name}`} disabled={busy} onClick={() => startEdit(payment)}>Edit</button>
+                  <button type="button" aria-label={`${payment.active ? "Pause" : "Resume"} ${payment.name}`} disabled={busy} onClick={() => toggleActive(payment)}>{payment.active ? "Pause" : "Resume"}</button>
+                  <button type="button" aria-label={`Delete ${payment.name}`} disabled={busy} onClick={() => remove(payment)}>Delete</button>
                 </span>}
               </span>
             </li>

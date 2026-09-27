@@ -116,6 +116,7 @@ export default function PreferredFunding({
             <span>{bank ? bankLabel(bank) : "Account unavailable"}</span>
             <label>Priority
               <input
+                aria-label={`Funding priority for ${bank ? bankLabel(bank) : "unavailable account"}`}
                 type="number"
                 min="1"
                 value={item.priority}
@@ -124,9 +125,9 @@ export default function PreferredFunding({
               />
             </label>
             {canEdit && <>
-              <button type="button" disabled={busy || item.priority < 1} onClick={() => update(item.id, { priority: item.priority })}>Save priority</button>
-              <label className="preference-enabled"><input type="checkbox" checked={item.enabled} disabled={busy} onChange={(event) => update(item.id, { enabled: event.target.checked })} /> Enabled</label>
-              <button type="button" disabled={busy} onClick={() => remove(item.id)}>Remove</button>
+              <button type="button" aria-label={`Save funding priority for ${bank ? bankLabel(bank) : "unavailable account"}`} disabled={busy || item.priority < 1} onClick={() => update(item.id, { priority: item.priority })}>Save priority</button>
+              <label className="preference-enabled"><input type="checkbox" aria-label={`Enable ${bank ? bankLabel(bank) : "unavailable account"}`} checked={item.enabled} disabled={busy} onChange={(event) => update(item.id, { enabled: event.target.checked })} /> Enabled</label>
+              <button type="button" aria-label={`Remove ${bank ? bankLabel(bank) : "unavailable account"}`} disabled={busy} onClick={() => remove(item.id)}>Remove</button>
             </>}
           </li>;
         })}

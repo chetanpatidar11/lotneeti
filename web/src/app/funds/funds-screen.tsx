@@ -17,7 +17,7 @@ type Bank = {
 };
 type Change = {
   id: number;
-  operation: "ADD" | "REMOVE" | "SET";
+  operation: "ADD" | "REMOVE" | "SET" | "ALLOTMENT";
   amount: string;
   balance: string;
   note: string;

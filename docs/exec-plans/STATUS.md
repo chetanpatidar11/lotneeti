@@ -1,11 +1,11 @@
 # LotNeeti execution status
 
-Last updated: 2026-09-26 — E02 complete; E03 started
+Last updated: 2026-09-27 — Sprint 11 validation gate green locally; remaining work is external blockers and K02 rules
 
 ## Current state
-- Active sprint: Sprint 4 (Sprint 1 B09 planner-dependent acceptance pending)
+- Active sprint: Sprint 10/11 validation
 - Overall status: IN PROGRESS
-- Current ticket: E03 — 24-hour rolling-limit tracker
+- Current ticket: Sprint 11 final validation — keep the full local gate green and document remaining external blockers
 - Working branch: `codex/autopilot`
 
 ## Completed
@@ -26,6 +26,7 @@ Last updated: 2026-09-26 — E02 complete; E03 started
 - B04: bank CRUD with encrypted/masked account number, owner and cross-funding policy, initial balance history, and workspace isolation.
 - B05: UPI CRUD with encrypted/masked handle, bank/holder link, active/verified states, optional limits and workspace isolation.
 - B06: investor settings UI with numeric priority editing and move controls, plain lower-number-first explanation, and authenticated workspace/investor proxy routes.
+- B09: inactive investors are excluded from automatic baseline planning; planner regression coverage verifies the active-state gate.
 - C01: Add Money action with row locking, immutable balance history and audit event.
 - C02: Remove Money action with negative history delta, row locking and audit event.
 - C03: Set Balance action with exact replacement amount and recorded old/new difference.
@@ -48,10 +49,86 @@ Last updated: 2026-09-26 — E02 complete; E03 started
 - D10: per-workspace IPO mode choice for Retail Only, Retail + sHNI, sHNI Preferred and Custom, shown for selected IPOs.
 - E01: immutable ORM-free planner input records and canonical serialization with stable IDs, UTC timestamps and normalized decimals.
 - E02: exact one-lot Retail and minimum whole-lot sHNI quote calculators above the strict ₹2,00,000 threshold.
+- E03: pure 24-hour rolling UPI/bank count and amount checks, shared-bank aggregation, per-UPI overrides, cancellation exclusion, immutable reservations and half-open cutoff boundary.
+- E04: pure cash-at-cutoff calculation for active blocks, planned allocations and scheduled payments, with next-day expected release boundaries and nonnegative Available output.
+- E05: pure owner Retail reserve calculation across overlapping selected IPOs, including future cutoffs, expected releases, existing owner allocations and scheduled payments.
+- E06: deterministic ordering of final selected IPOs by GMP descending, cutoff ascending and stable ID; unpriced GMP sorts last.
+- E07: pure baseline Retail coverage phase with IPO/applicant priority ordering, active demat eligibility, existing-application and lock exclusion, one row per applicant/IPO and explicit uncovered reasons. Wallet feasibility is supplied through an injected selector for E08-E10.
+- E08: concrete Retail wallet selector prefers own bank/UPI, checks bank/UPI activity, restrictions, cross-funding policy, cash, rolling limits and owner reserve, and records cross-funding warnings.
+- E09: enabled FundingPreference priority order ranks feasible cross-funding banks after own wallets and owner safety, with stable fallback.
+- E10: Retail wallet ranking prefers balances too small for minimum sHNI after stronger rules, then rolling-limit headroom, tighter sufficient balance and stable IDs.
+- E11: pure minimum-quote Retail-to-sHNI upgrade pass for eligible IPO modes, preserving row identity and baseline coverage while rechecking cash and rolling limits.
+- E12: sHNI Preferred repeats minimum-quote upgrade attempts until no remaining Retail row can be upgraded; synthetic 10-applicant case preserves 3 sHNI + 7 Retail at limited cash.
+- E13: bounded two-row Retail rehome to free an sHNI wallet; candidate replay validates all rows and failed attempts preserve the original plan.
+- E15: selected manual locks become immutable plan rows with current blocking/warning codes; automation skips locked rows and unselected IPO locks are omitted from new plans.
+- E16: deterministic ordered plain-language explanation codes/data for automatic rows, with applicant priority, funding choice, owner cash, category and rolling-limit factors.
+- E17: independent final audit replays planned rows from the snapshot to check duplicates, eligibility, cash, scheduled payments, expected releases, rolling limits, locks and Planned totals.
+- E18: pure proposal runner records planner/settings version and canonical snapshot/output hashes; repeated runs and reordered inputs produce identical logical output.
+- E19: workspace-scoped PlanRun/PlanRow persistence with canonical snapshot, version/hash metadata, audit results, explanations and atomic write/audit event; cross-workspace snapshot records rejected.
+- E20: authenticated workspace planner preview builds a frozen server-side snapshot from current investors, demats, banks, UPIs, funding preferences, scheduled payments and final selected IPOs; optional IPO filter and plan cross-funding override; no plan/application write.
+- Sprint 4 P0 gate: E01-E13 and E15-E20 green. E14 remains a P1 follow-up.
+- F01: responsive Plan review table renders draft IPO/applicant/category/lots/amount/demat/bank/UPI/funding/status/lock from the workspace preview, with masked lookup labels and an IPO review link.
+- F03: category and lots controls recalculate exact amounts in paise; a workspace-scoped validation API replays edited rows and returns blocking audit findings without silently correcting invalid lots or duplicate applicant/IPO rows.
+- F04: Plan review demat selector offers only active demats owned by the row applicant; validation blocks inactive, missing and another applicant's demat.
+- F05: Plan review bank/UPI selectors rank own, preferred and fallback banks with masked balances; edited mappings immediately revalidate cash, rolling limits, cross-funding policy and owner cash warnings.
+- F06: Plan rows can be locked/unlocked; subsequent planner requests include exact locked mappings, preserve them through re-plan, and keep infeasible locks visible with blocking reasons.
+- F07: Re-plan action sends only locked mappings and recalculates unlocked rows against current bank availability; a regression case verifies remapping around a preserved lock.
+- F08: Plan review distinguishes Ready, Warning and Blocking with plain warning text; Export CSV is disabled for blocking plans, and the server revalidates exact edited rows before saving/exporting. A stale amount stays unchanged and blocks the export route.
+- G01: Named/versioned export adapter contract and registry map deterministic plan-order rows into file artifacts independently of storage and API.
+- G02: Generic CSV adapter produces deterministic plan-order bytes with exact amounts, quoted text and spreadsheet-formula protection; saved-plan service checks export readiness and workspace writer membership before decrypting identifiers.
+- G04: Ready reviewed plans save their exact rows, generate encrypted private S3 objects and return five-minute signed URLs after a second workspace writer check; blocked runs, viewers and outsiders cannot generate/download.
+- G05: Each export records the planner/settings versions, exact input/output hashes, file hash, row count, total and format version tied to its saved PlanRun.
+- J01: Shared responsive primary navigation links Home, IPOs, Plan, Funds, Applications, Portfolio and Settings; mobile navigation stays reachable at the bottom with active-page indication.
+- J02: Home renders workspace-scoped Balance, Blocked, Planned and Available cards. Submitted, blocked and result transitions move values correctly; bank-level Available floors at zero.
+- J03: Home shows published open IPO count, tracked applications, Submitted applications awaiting mandate block, allotment wins and realized gains from workspace-scoped sale results.
+- J04: Existing published IPO cards already show issue name/type/status, price, lot, open/close dates, GMP amount/percent/history/trend, workspace selection state and IPO mode; reviewed against the ticket criterion.
+- J05: Plan creation shows selected IPOs/modes beside Balance, Blocked, Planned and Available on desktop; mobile stacks the same context before the editable mapping table.
+- J06: Plan audit/row conditions have plain blocking and warning messages with a safe fallback, so new internal reason codes do not reach the user raw.
+- J07: Existing money and IPO date formatting consistently uses INR/Indian grouping and en-IN dates; reviewed across Home, Funds, IPOs and Plan.
+- H01: Application model stores exact reviewed plan row references, workspace, status, planned/submitted/blocked/result timestamps, expected release and allotment fields; mismatched or cross-workspace mappings are rejected.
+- H02: A member can start tracking a ready saved plan, mark rows Submitted then Blocked, and see scoped applications; Blocked lowers Available while Balance remains unchanged. Transitions are locked, audited and writer-only.
+- H03: Not Allotted releases the whole active block, restores Available, keeps Balance unchanged and records one result/audit event; repeated result actions are rejected.
+- H04: Allotted action takes quantity and actual cost, atomically debits Balance once, releases the whole block, records result/history/audit and blocks repeated or invalid debits.
+- H05: The same allotted action handles partial sHNI results, deducting only actual cost and releasing the full mandate; a ₹2.10 lakh block/₹42,000 cost case is green.
+- H06: Live planner snapshots reserve submitted/blocked application cash through the allotment date, release it at local midnight the next day, retain rolling usage, and exclude existing applicant/IPO applications. Actual result removes the expected block; a partial allotment debits only actual cost.
+- H07: Applications expose a dated history of plan, submission, block, result, Balance debit and full block release. Starting tracking on another plan keeps older history visible.
+- I01: Workspace-scoped sale records for allotted applications store quantity, per-share price, date, optional charges, actor and recorded time. Transactional quantity checks prevent selling more than allotted; Portfolio has a sale entry form and sale list.
+- I02: Each sale shows gross proceeds, allocated actual IPO cost, charges, realized profit and ROI. Cumulative share-based cost allocation preserves exact paise when an allotment sells in parts; zero allocated cost yields no ROI instead of a divide-by-zero error.
+- I03: Portfolio shows realized workspace totals and IPO/investor summaries, with inclusive sale-date filters. Period reports allocate cost from the entire sale history before filtering, preserving partial-sale cost shares.
+- K01: MFA-gated Founder Admin home links to IPO, GMP, users, planner runs and security audit records; each destination is accessible to a verified founder.
+- L01: Cross-workspace substitution of nested investor/demat/bank/UPI/scheduled-payment IDs and plan/export/application/sale IDs is denied even for a user who owns both workspaces.
+- L02: PAN, bank, demat and UPI sensitive values use application-level encryption and masked API display; existing model/API tests verify plaintext is absent from stored ciphertext and responses.
+- L03: Export generation and signed download require workspace writer access, recheck authorization, and deny viewer/outsider and wrong-workspace plan IDs.
+- L05: Production settings enforce HTTPS redirect, secure/HttpOnly session cookies, secure CSRF cookie, HSTS, MIME sniffing protection and frame denial; production-like middleware behavior is tested.
+- L06 implementation: Nightly timer and backup command stream a compressed PostgreSQL archive through AES-256-GCM into private S3, with 7 daily/4 weekly/3 monthly retention. Live schedule and bucket setup remain a deployment gate.
+- L07 implementation: Restore command authenticates the backup before restoring into a separately named database; a real PostgreSQL/S3 restore drill remains required before beta invitations.
+- L09: Production logs emit structured allowlisted JSON for requests, recurring jobs and manual provider errors; query strings, cookies, request bodies and exception messages are omitted.
+- L10 implementation: The existing main-PR CI workflow migrates PostgreSQL, checks Redis, and runs the complete backend/frontend check script, including all planner P0 tests. Remote CI execution remains unverified in this session.
+- L11 implementation: EC2 operator runbook, Nginx HTTPS template, systemd units and repeatable deploy script cover Django, Next.js, Celery worker/beat, PostgreSQL and Redis on a lean host. No live EC2 deployment was performed.
+- L12 implementation: CloudFormation template defines private, AES256-encrypted export/backup buckets, TLS/encryption denials and prefix-scoped IAM policies. No bucket or role was created.
+- M02: Deterministic synthetic 17-applicant fixture includes priority, demat, bank, UPI and ordered funding preferences without real PAN/payment identifiers; used in matrix end-to-end tests.
+- M01: All 115 Planner v2 P0 matrix IDs are mapped to executable assertions; the CI/check script verifies mapping after pytest. The 5 P1 repair cases remain outside this P0 acceptance gate, with RR-004/005 still open under E14.
+- M04: Four frozen, versioned synthetic 17-applicant plan outputs pin exact row mappings, uncovered reasons and input/output hashes across releases.
+- M05: Synthetic API flow selects an IPO, previews/edits/locks a plan, exports exact reviewed identifiers, tracks submission/block, records partial allotment, sells allotted shares and checks realized IPO/investor/workspace profit.
+- Sprint 10 Android local packaging assets: Capacitor 8 Android project, HTTPS-only beta URL build check, local launch screen and official Browser plugin handoff to the hosted Next.js site; generated native project and build instructions exist. This is a limited launcher, not a complete bundled Capacitor client.
+- Sprint 11 handoff draft: `docs/FINAL_HANDOFF.md` records setup, exact local gate evidence, demo flow, known limits, external blockers, deployment references and a manual acceptance checklist. It remains a draft until required P0 and live gates pass.
+- L04: Fixed-window Redis-backed production limits cover email link start/verify, founder admin login/pages, future import mutations, planner mutations and export create/download. Trusted Nginx real IP is used for anonymous paths; authenticated routes are keyed by user. Limits return 429 with Retry-After and avoid raw IPs in cache keys. Test settings disable global limits so existing suite order cannot affect outcomes; focused tests enable and verify limits. Web auth proxy forwards Nginx's real-IP header.
+- J08: Added keyboard skip link, visible focus outlines, 44px minimum navigation/button/planner controls, specific accessible names for repeated investor/funding/payment actions, and visible icon+text plan warning/blocking states. Automated lint/typecheck/build passed; physical mobile and screen-reader acceptance remains for the founder.
+- M06: Workspace-scoped BetaEvent stores only an allowlisted milestone and timestamp, with no free-form payload or individual identifiers. Workspace creation, plan preview, manual validation, export generation, allotment and sale/P&L completion record milestones. Founder Admin has a read-only list; no paid analytics service is used. Fresh test-settings migration applied `core.0002_betaevent`.
+- F02: Plan table allows an active workspace applicant change on unlocked rows, preserves the user's other mapping fields, and immediately sends the edited row through server validation. Invalid demat, inactive applicant and duplicate applicant/IPO findings block export. Active choices use stable priority order; locked rows remain fixed.
+- F09: Automatic plan rows expose a keyboard-accessible "Why this bank?" disclosure. It maps planner reason codes to short, safe own/preferred/other funding, owner money and bank/UPI limit explanations; locked or manually validated rows do not claim an automatic reason.
+- E14: A deterministic same-size, same-cutoff/release bank+UPI swap pass runs after bounded repair. It only accepts an unlocked swap that increases own-bank mappings and passes cash, rolling, policy and independent audit checks; warnings are recomputed. RR-004/RR-005 tests cover improvement, restriction rollback, lock preservation and input-order independence. Existing four synthetic golden outputs remained byte-for-byte stable. The matrix gate now maps all 115 P0 and 5 P1 IDs.
+- K07: MFA-gated Founder Admin workspace search by name/ID shows counts and latest plan status without PAN, account, owner email or financial amounts. Valid lookups write an audit event containing only result count; short queries cannot enumerate the workspace list.
 
 ## Blockers
 - Environment: Git metadata is read-only in this session (`.git/index.lock: Operation not permitted`), so green milestones cannot be committed here. Work continues in the writable worktree.
-- Dependency: B09 automatic-planning exclusion cannot be fully verified until E07 planner coverage exists. Investor active state is implemented; B09 remains open until planner tests exercise it.
+- Configuration: approved documents do not choose a platform cross-funding default. Set `PLANNER_PLATFORM_CROSS_FUNDING_POLICY` explicitly to ALLOW, WARN or DISALLOW before planner preview; the endpoint returns 503 when unset. No default is silently assumed.
+- G03: no approved account/broker Excel template or column mapping exists in the repository. The sample-compatible workbook adapter cannot be verified until a safe template/mapping is supplied; generic CSV work continues independently.
+- B07/B08: the supplied account master sample-format workbook and exact sheet/column mapping are absent. Parsing/preview confirmation against that approved format cannot be completed safely; a sanitized sample or mapping was requested while independent work continues.
+- K02: approved documents do not define a stale-provider freshness limit or when differing IPO/GMP sources count as a conflict. Exception labeling awaits those rules; independent P0 security work continues.
+- M03: 15-25 historical founder golden plans and approved expected mappings are not supplied. Synthetic fixtures can validate mechanics, but cannot establish founder-approved historical outputs.
+- Sprint 10 Android: the Next.js application requires server rendering and server-side cookie/API proxy routes, so its UI cannot currently be packaged into Capacitor's static assets. The beta launcher opens the hosted HTTPS site through the Browser plugin. A full native wrapper/mobile client and physical APK acceptance remain open. Android Studio/SDK/Java are not installed here, and the actual HTTPS beta host is undecided.
+- L06-L08/L11-L12: live AWS backup/restore, budget alerts, EC2/Nginx deployment and private S3 policy verification require resources the user has not authorized creating. No paid services were used.
 
 ## Test status
 A01: `ruff check backend`, `ruff format --check backend`, `pytest backend` (1 passed), Django system check, and migration drift check passed. Docker is unavailable in this environment, so live PostgreSQL/Redis Compose startup remains unverified here.
@@ -90,6 +167,77 @@ D09: `bash scripts/check.sh` passed (backend 78 tests, frontend 5 tests, lint, t
 D10/Sprint 3 gate: `bash scripts/check.sh` passed (backend 78 tests, frontend 5 tests, lint, typecheck, migration drift, and production build). Fresh SQLite migration from empty DB also passed. IPO modes persist independently of manual/automatic selection.
 E01: `bash scripts/check.sh` passed (backend 80 tests, frontend 5 tests, lint, typecheck, migration drift, and production build).
 E02: `bash scripts/check.sh` passed (backend 86 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); QC-001 to QC-003 and boundary/invalid inputs covered.
+E03: `bash scripts/check.sh` passed (backend 93 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); RL-001 to RL-007 and shared-bank amount cap covered.
+E04: `bash scripts/check.sh` passed (backend 100 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); BA-004 to BA-006, RD-001/002/004/005/006 and BL-004/005/006 covered in pure timeline tests.
+E05: `bash scripts/check.sh` passed (backend 106 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); OP-001 to OP-005 reserve cases covered. OP-006 awaits wallet ranking.
+E06: `bash scripts/check.sh` passed (backend 110 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); IS-007 to IS-009 ordering cases covered.
+E07: `bash scripts/check.sh` passed (backend 114 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); EL-001 to EL-004 and AP-001/AP-003 phase behavior covered with injected wallet selection.
+E08/B09: `bash scripts/check.sh` passed (backend 120 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); CF-001/003/005/006, EL-005 to EL-007, OP-006 and B09 active exclusion covered.
+E09: `bash scripts/check.sh` passed (backend 123 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); preferred order, own-bank precedence, fallback and disabled preference covered.
+E10: `bash scripts/check.sh` passed (backend 126 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); RW-001 to RW-004 covered.
+E11: `bash scripts/check.sh` passed (backend 130 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); QC-004/005/006 and scarce-priority upgrade behavior covered.
+E12: `bash scripts/check.sh` passed (backend 131 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); QC-007 maximum-count and fixed-point behavior covered.
+E13: `bash scripts/check.sh` passed (backend 134 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); RR-001 to RR-003 rehome/rollback/bound cases covered.
+E15: `bash scripts/check.sh` passed (backend 140 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); LM-001/002/003/005/007/008 lock preservation and blocking cases covered.
+E16: `bash scripts/check.sh` passed (backend 144 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); ordered cross/own funding and sHNI reasons covered.
+E17: `bash scripts/check.sh` passed (backend 150 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); AD-001 to AD-004 plus release, lock and total replay cases covered.
+E18: `bash scripts/check.sh` passed (backend 153 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); AD-005 to AD-007 repeatability, input-order independence and version/hash metadata covered.
+E19: `bash scripts/check.sh` passed (backend 156 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); migration, scoped persistence and transaction rollback covered.
+E20/Sprint 4 gate: `bash scripts/check.sh` passed (backend 162 tests, frontend 5 tests, lint, typecheck, migration drift, and production build); preview selection, scope, read-only behavior and plan policy override covered. Fresh SQLite migration applied all migrations, including planner. Category-specific 4 PM sHNI and 5 PM Retail cutoffs are represented in the snapshot and checked by the audit.
+F01: `bash scripts/check.sh` passed (backend 162 tests, frontend 7 tests, lint, typecheck, migration drift, and production build); plan table route and presentation helpers covered.
+F03: `bash scripts/check.sh` passed (backend 165 tests, frontend 9 tests, lint, typecheck, migration drift, and production build); category/lots recalculation, duplicate and cash revalidation covered.
+F04: `bash scripts/check.sh` passed (backend 166 tests, frontend 10 tests, lint, typecheck, migration drift, and production build); active/own demat selection and invalid demat blocking covered.
+F05: `bash scripts/check.sh` passed (backend 168 tests, frontend 12 tests, lint, typecheck, migration drift, and production build); edited cash, UPI limit, policy and owner-reserve warning cases covered.
+F06: `bash scripts/check.sh` passed (backend 170 tests, frontend 13 tests, lint, typecheck, migration drift, and production build); exact lock preservation, infeasible lock visibility, workspace scope and client serialization covered.
+F07: `bash scripts/check.sh` passed (backend 171 tests, frontend 13 tests, lint, typecheck, migration drift, and production build); locked resource preservation and unlocked bank remapping covered.
+F08: `bash scripts/check.sh` passed (backend 182 tests, frontend 15 tests, lint, typecheck, migration drift, and production build); end-to-end stale-amount/blocking export denial and warning visibility covered.
+G01: `bash scripts/check.sh` passed (backend 174 tests, frontend 14 tests, lint, typecheck, migration drift, and production build); adapter identity, version, ordering and registry validation covered.
+G02: `bash scripts/check.sh` passed (backend 178 tests, frontend 14 tests, lint, typecheck, migration drift, and production build); stable CSV bytes, quoting/formula safety, authorized plaintext mapping and blocked/viewer denial covered.
+G04: `bash scripts/check.sh` passed (backend 182 tests, frontend 15 tests, lint, typecheck, migration drift, and production build); reviewed run persistence, private S3 request parameters, authorized signed download and route scope covered. Live S3 remains unverified without a configured private bucket.
+G05: `bash scripts/check.sh` passed (backend 182 tests, frontend 15 tests, lint, typecheck, migration drift, and production build); export metadata/hash assertions and fresh SQLite migration including exports passed.
+J01: `bash scripts/check.sh` passed (backend 182 tests, frontend 15 tests, lint, typecheck, migration drift, and production build); seven navigation destinations compile, with responsive desktop/mobile layout.
+J02 partial: `bash scripts/check.sh` passed (backend 184 tests, frontend 15 tests, lint, typecheck, migration drift, and production build); scoped capital API, latest-plan Planned, blocked subtraction arithmetic and nonnegative per-bank Available covered. Actual mandate blocks arrive with H-series tracking.
+J04: Existing IPO cards and selection controls reviewed against acceptance after the J02 full green gate (184 backend tests, 15 frontend tests); no duplicate implementation needed.
+J05: Frontend lint, typecheck, 15 tests and production build passed after selected IPO/capital context layout.
+J06: Frontend lint, typecheck, 16 tests and production build passed; known validation codes and unknown-code fallback covered.
+J07: Existing formatter and date use verified by code review and the same green frontend gate; no duplicate implementation needed.
+H01: `bash scripts/check.sh` passed (backend 186 tests, frontend 16 tests, lint, typecheck, migration drift, and production build); mapping integrity, scope and timestamp persistence covered.
+H02: `bash scripts/check.sh` passed (backend 188 tests, frontend 16 tests, lint, typecheck, migration drift, and production build); idempotent tracking, transition order, scoped access, Blocked/Planned card movement and unchanged Balance covered.
+H03: `bash scripts/check.sh` passed (backend 189 tests, frontend 16 tests, lint, typecheck, migration drift, and production build); BL-001 full release/no debit and duplicate-result rejection covered.
+H04: `bash scripts/check.sh` passed (backend 190 tests, frontend 16 tests, lint, typecheck, migration drift, and production build); BL-002 actual-cost debit, full unblock, unique history and repeat rejection covered.
+H05: Focused application tracking suite passed (5 backend tests) after BL-003 partial sHNI block-release regression; full gate follows H06 boundary work.
+H06/Sprint 7 P0 gate: `bash scripts/check.sh` passed (192 backend tests, 16 frontend tests, lint, typecheck, migration drift, and production build); live snapshot next-day release and actual-result supersession passed. H07 P1 history view remains.
+H07/J02/Sprint 7 full gate: `bash scripts/check.sh` passed (192 backend tests, 18 frontend tests, lint, typecheck, migration drift, and production build); partial allotment and no-allotment timelines tested. Capital API transition tests from H02-H04 verify J02.
+I01: `bash scripts/check.sh` passed (194 backend tests, 18 frontend tests, lint, typecheck, migration drift, and production build). A fresh test-settings migration applied portfolio migration. Sale tests cover partial quantities, oversell, invalid amounts, audit and workspace/role scope.
+I02: `bash scripts/check.sh` passed (196 backend tests, 18 frontend tests, lint, typecheck, migration drift, and production build); split-sale cost allocation, exact total cost, profit, ROI and tiny-cost boundary passed.
+I03/Sprint 8 gate: `bash scripts/check.sh` passed (197 backend tests, 18 frontend tests, lint, typecheck, migration drift, and production build); fresh test-settings migration applied. Period/grouping and workspace isolation passed.
+J03: `bash scripts/check.sh` passed (198 backend tests, 18 frontend tests, lint, typecheck, migration drift, and production build); operation count transitions and workspace isolation passed.
+K01: `bash scripts/check.sh` passed (198 backend tests, 18 frontend tests, lint, typecheck, migration drift, and production build); Founder Admin navigation and MFA-gated destinations passed.
+L01-L03: `bash scripts/check.sh` passed (200 backend tests, 18 frontend tests, lint, typecheck, migration drift, and production build). New cross-workspace CRUD denial suite passed; existing B02-B05 and G04 export tests cover masking, encryption and authorization.
+L05: `bash scripts/check.sh` passed (201 backend tests, 18 frontend tests, lint, typecheck, migration drift, and production build); HTTPS redirect, HSTS, no-sniff, frame denial and secure CSRF cookie tests passed.
+L06/L07 code gate: `bash scripts/check.sh` passed (204 backend tests, 18 frontend tests, lint, typecheck, migration drift, and production build); fake dump/S3 retention and authenticated restore tests passed. `pg_dump`, `pg_restore` and private S3 are unavailable locally, so live backup/restore verification remains open.
+L09/L10: `bash scripts/check.sh` passed (206 backend tests, 18 frontend tests, lint, typecheck, migration drift, and production build). Structured log privacy tests passed; CI workflow review confirmed main PR trigger and full check script.
+L11/L12 code gate: `bash scripts/check.sh` passed (207 backend tests, 18 frontend tests, lint, typecheck, migration drift, and production build). Deployment shell syntax and S3 template JSON/policy assertions passed. Live EC2/Nginx/S3 verification remains an external deployment gate.
+M01/M02 progress: `bash scripts/check.sh` passed (221 backend tests, 18 frontend tests, lint, typecheck, migration drift, and production build). New cases cover IS-001 through IS-006, BA-007, QC-008, LM-004/006/007, MI-001/004/005/008 and EE-001/002/003. The matrix contains 115 P0 and 5 P1 cases; a complete case-to-test audit remains open.
+M01 funding/multi-IPO expansion: `bash scripts/check.sh` passed (227 backend tests, 18 frontend tests, lint, typecheck, migration drift, and production build). New cases cover EL-008, AP-004, CF-002/004, SH-001/002/003/005 and MI-006.
+M01/M04 gate: `bash scripts/check.sh` passed (239 backend tests, 18 frontend tests, all 115 P0 matrix IDs mapped, lint, typecheck, migration drift, and production build). Added FP-003/004, CF-005, EL-006, MI-007, EE-004/005/006 and four frozen synthetic plan snapshots.
+M05/Sprint 11 local gate: `bash scripts/check.sh` passed (240 backend tests, 18 frontend tests, all 115 P0 matrix IDs mapped, lint, typecheck, migration drift, and production build). Fresh test-settings migration applied; the complete synthetic API business flow passed. Browser/device manual acceptance remains for the human after beta packaging.
+Sprint 10 Android local gate: `bash scripts/check.sh` passed (240 backend tests, 18 frontend tests, 1 Android package test, all 115 Planner v2 P0 matrix IDs mapped, Ruff, Django check/migration drift, frontend lint/typecheck/build and Capacitor typecheck/build/sync). No APK compiled because Java/Android SDK are unavailable. CI now installs mobile dependencies and runs the same package checks with a synthetic URL.
+L04: `bash scripts/check.sh` passed (243 backend tests, 18 frontend tests, 1 Android package test, all 115 Planner v2 P0 matrix IDs mapped, Ruff, Django checks, frontend lint/typecheck/build and Capacitor typecheck/build/sync). Real Redis/Nginx throttling is not yet tested on the beta host.
+J08: `bash scripts/check.sh` passed with the same 243 backend, 18 frontend and 1 Android tests plus all lint/typecheck/build/sync gates after accessibility edits.
+M06: `bash scripts/check.sh` passed (244 backend tests, 18 frontend tests, 1 Android package test and all matrix/lint/typecheck/build/sync gates). The M05 synthetic flow asserts five analytics milestones and absence of a payload field; activation is tested on workspace creation. Fresh test-settings migration passed.
+F02: `bash scripts/check.sh` passed (245 backend tests, 19 frontend tests, 1 Android package test and all matrix/lint/typecheck/build/sync gates). New API regression covers changed applicant, duplicate mapping, invalid demat and inactive applicant; frontend choice ordering test passed.
+F09: `bash scripts/check.sh` passed (245 backend tests, 20 frontend tests, 1 Android package test and all matrix/lint/typecheck/build/sync gates). Reason-code presentation test passed.
+E14: `bash scripts/check.sh` passed (248 backend tests, 20 frontend tests, 1 Android package test, all 115 P0 and 5 P1 Planner v2 matrix IDs mapped, and all lint/typecheck/build/sync gates). Four frozen synthetic golden snapshots still pass.
+K07: `bash scripts/check.sh` passed (249 backend tests, 20 frontend tests, 1 Android package test and all matrix/lint/typecheck/build/sync gates). Founder MFA denial and redacted search test passed.
+D13: `bash scripts/check.sh` passed (252 backend tests, 20 frontend tests, 1 Android package test and all matrix/lint/typecheck/build/sync gates). Migration `ipos.0005_ipofieldoverride` adds separate active/history records; source updates preserve manual effective values, replacement/resume retain actor/time/reason, invalid values are rejected, and audit metadata omits field values.
+D13/K03: `bash scripts/check.sh` passed (254 backend tests, 20 frontend tests, 1 Android package test and all matrix/lint/typecheck/build/sync gates). The MFA-gated staff editor shows IPO source/effective values, captures correction reason and actor history, supports resume-auto, and effective values feed public IPO/GMP, workspace selection and planner snapshots.
+D14: `bash scripts/check.sh` passed (257 backend tests, 20 frontend tests, 1 Android package test and all matrix/lint/typecheck/build/sync gates). `GMPProviderState` records health timestamps and redacted error types; manual GMP writes update health; the MFA-gated staff page requires reasons for enable/disable and temporary values, validates future expiry, audits changes and supports clearing the override.
+D14/K04: `bash scripts/check.sh` passed (259 backend tests, 20 frontend tests, 1 Android package test and all matrix/lint/typecheck/build/sync gates). GMP source observations retain immutable values while audited, expiring corrections show source/effective value, observed/fetched freshness and history in the MFA-gated staff editor; disabled providers and active corrections flow through public history, selection and planner GMP projections.
+K05: `bash scripts/check.sh` passed (261 backend tests, 20 frontend tests, 1 Android package test and all matrix/lint/typecheck/build/sync gates). IPO content versions deduplicate document/provider/model inputs, retain immutable drafts and metadata, and publish reasoned revision history through the MFA-gated editor; published company/financial/risk summaries are exposed without any paid AI call.
+D11/D12: `bash scripts/check.sh` passed (261 backend tests, 20 frontend tests, 1 Android package test and all matrix/lint/typecheck/build/sync gates). Stored company/financial/risk content is served as concise public IPO summaries; queueing is once per document/provider/model version with draft metadata and review state retained.
+K06: `bash scripts/check.sh` passed (263 backend tests, 20 frontend tests, 1 Android package test and all matrix/lint/typecheck/build/sync gates). Effective-dated global and bank policy records are immutable, overlap-checked, reasoned, MFA-gated and audited; planner snapshots resolve the policy active at their `as_of` time.
+H07/I03: Existing `bash scripts/check.sh` gates are green (H07 at 192 backend/18 frontend tests; I03 at 197 backend/18 frontend tests). Applications render the dated plan/submission/block/result/debit/release timeline; portfolio reports aggregate workspace/IPO/investor realized P&L with inclusive period filters and partial-sale cost allocation.
 
 ## Decisions
 Use approved architecture and specifications. Do not replace product requirements with generic assumptions.
@@ -98,6 +246,11 @@ Use approved architecture and specifications. Do not replace product requirement
 - Use PostgreSQL and Redis in local development through Docker Compose; use an isolated SQLite settings module for fast deterministic unit tests.
 - Keep the health endpoint under `/api/v1/health/` so A02 can verify frontend-to-backend connectivity.
 - Monthly recurring payments scheduled on days 29-31 use the last day in shorter months and return to the original day when available.
+- E14 owner-affinity cleanup and F02 applicant editing are green with focused regressions and remain part of the local full gate.
+- G03 awaits an approved workbook template/mapping. Generic CSV remains the usable export format until then.
+- L08 AWS budget alerts must be configured before leaving paid beta resources running; no AWS resources or paid API usage are authorized in this session.
 
 ## Next action
-Implement E03 pure 24-hour UPI/bank rolling count and amount tracker, including cancellations and shared bank use.
+Run final local validation and keep `docs/FINAL_HANDOFF.md` aligned. K02 remains blocked until approved freshness/conflict rules are supplied; M03 requires approved sanitized historical expected mappings; B07/B08/G03 require the sample workbook; L06-L08/L11-L12 need live cloud verification later. Do not mark the beta COMPLETE while those P0 gates remain open.
+
+Final local validation: `bash scripts/check.sh` passed with 263 backend tests, 20 frontend tests and 1 Android packaging test; a fresh SQLite database applied all migrations through `planner.0002_plannerpolicy` and `ipos.0008_ipocontentversion_ipocontentrevision_and_more`; `git diff --check`, Ruff and format checks passed. No commit was created because Git metadata is read-only in this session.

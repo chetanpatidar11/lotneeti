@@ -50,11 +50,15 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: |
+            web/package-lock.json
+            mobile/package-lock.json
       - name: Install backend
         run: python -m pip install -e 'backend[dev]'
       - name: Install frontend
         run: npm ci --prefix web
+      - name: Install Android packaging dependencies
+        run: npm ci --prefix mobile
       - name: Check local services and migrate PostgreSQL
         run: |
           python -c 'import os, redis; assert redis.Redis.from_url(os.environ["REDIS_URL"]).ping()'

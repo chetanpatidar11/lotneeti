@@ -114,6 +114,7 @@ export default function PrioritySettings({
                   <label>
                     Priority
                     <input
+                      aria-label={`Priority for ${investor.name}`}
                       type="number"
                       min="1"
                       value={investor.planning_priority}
@@ -123,8 +124,8 @@ export default function PrioritySettings({
                   </label>
                   {workspace.role !== "VIEWER" && (
                     <span className="order-buttons">
-                      <button type="button" disabled={index === 0 || busy} onClick={() => setInvestors(movePriority(investors, index, -1))}>Move up</button>
-                      <button type="button" disabled={index === investors.length - 1 || busy} onClick={() => setInvestors(movePriority(investors, index, 1))}>Move down</button>
+                      <button type="button" aria-label={`Move ${investor.name} up`} disabled={index === 0 || busy} onClick={() => setInvestors(movePriority(investors, index, -1))}>Move up</button>
+                      <button type="button" aria-label={`Move ${investor.name} down`} disabled={index === investors.length - 1 || busy} onClick={() => setInvestors(movePriority(investors, index, 1))}>Move down</button>
                     </span>
                   )}
                   <PreferredFunding

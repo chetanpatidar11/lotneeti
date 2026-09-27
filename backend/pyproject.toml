@@ -8,6 +8,7 @@ version = "0.1.0"
 description = "LotNeeti Django API and deterministic planning services"
 requires-python = ">=3.12"
 dependencies = [
+  "boto3>=1.35,<2",
   "celery>=5.5,<5.6",
   "cryptography>=45,<47",
   "Django>=5.2,<5.3",
@@ -28,7 +29,7 @@ dev = [
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["accounts*", "config*", "core*", "funding*", "investors*", "ipos*", "planner*", "platform_admin*"]
+include = ["accounts*", "applications*", "config*", "core*", "exports*", "funding*", "investors*", "ipos*", "ops*", "planner*", "platform_admin*", "portfolio*"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.test"

@@ -6,8 +6,9 @@ export function formatInr(value: string | number): string {
   }).format(Number(value));
 }
 
-export function balanceActionLabel(operation: "ADD" | "REMOVE" | "SET"): string {
+export function balanceActionLabel(operation: "ADD" | "REMOVE" | "SET" | "ALLOTMENT"): string {
   if (operation === "ADD") return "+ Add Money";
   if (operation === "REMOVE") return "- Remove Money";
+  if (operation === "ALLOTMENT") return "Allotment cost";
   return "Set Balance";
 }

@@ -9,6 +9,8 @@ from rest_framework.test import APIClient
 from accounts.models import User
 from accounts.services import create_workspace
 from core.models import AuditEvent
+from funding.models import BankAccount
+from investors.models import Investor
 from platform_admin.models import AdminTOTPDevice
 from platform_admin.totp import enroll_admin, verify_admin_code
 
@@ -35,7 +37,53 @@ def test_founder_admin_can_access_separate_platform_controls():
     assert login_response.status_code == 302
     assert AuditEvent.objects.filter(action="admin.login", actor=founder).count() == 1
     assert site.get(reverse("platform-overview")).json() == {"users": 1, "workspaces": 1}
-    assert site.get(reverse("founder_admin:index")).status_code == 200
+    index = site.get(reverse("founder_admin:index"))
+    assert index.status_code == 200
+    for model_path in (
+        "ipos_ipo_changelist",
+        "ipos_gmpobservation_changelist",
+        "accounts_user_changelist",
+        "planner_planrun_changelist",
+        "core_auditevent_changelist",
+        "core_betaevent_changelist",
+    ):
+        url = reverse(f"founder_admin:{model_path}")
+        assert url.encode() in index.content
+        assert site.get(url).status_code == 200
+    assert reverse("founder_admin:support-workspaces").encode() in index.content
+
+
+@pytest.mark.django_db
+def test_support_lookup_shows_redacted_counts_and_requires_founder_mfa():
+    founder = User.objects.create_superuser(email="founder@example.test", password="test-password")
+    workspace = create_workspace(name="Synthetic support workspace", owner=founder)
+    investor = Investor(workspace=workspace, name="Synthetic person")
+    investor.set_pan("TESTX0001A")
+    investor.save()
+    bank = BankAccount(workspace=workspace, owner=investor, bank_name="Synthetic Bank")
+    bank.set_account_number("DEMO-ACCOUNT-0001")
+    bank.save()
+    url = reverse("founder_admin:support-workspaces")
+    site = Client()
+    site.force_login(founder)
+    assert site.get(url, {"q": "Synthetic support"}).status_code == 302
+    session = site.session
+    session["admin_mfa_verified"] = True
+    session.save()
+
+    response = site.get(url, {"q": "Synthetic support"})
+    assert response.status_code == 200
+    assert str(workspace.pk).encode() in response.content
+    assert b"Investors: 1" in response.content
+    assert b"Banks: 1" in response.content
+    for sensitive in (b"TESTX0001A", b"DEMO-ACCOUNT-0001", founder.email.encode()):
+        assert sensitive not in response.content
+    assert site.get(url, {"q": str(workspace.pk)}).status_code == 200
+    assert AuditEvent.objects.filter(action="admin.support_lookup", actor=founder).count() == 2
+    assert all(
+        set(event.metadata) == {"result_count"}
+        for event in AuditEvent.objects.filter(action="admin.support_lookup")
+    )
 
 
 @pytest.mark.django_db

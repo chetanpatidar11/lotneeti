@@ -76,6 +76,18 @@ def test_rl004_bank_shared_cap_aggregates_other_upi():
     assert check(events, settings=config(bank_level_enforcement=False)).allowed
 
 
+def test_bank_amount_cap_aggregates_other_upi_and_respects_cancellation():
+    events = [
+        event(1, upi_id="upi-2", amount="490000.00"),
+        event(2, upi_id="upi-2", amount="100000.00", cancelled=True),
+    ]
+    result = check(events)
+    assert result.upi_amount_after == Decimal("15000.00")
+    assert result.bank_amount_after == Decimal("505000.00")
+    assert result.blocking_reasons == ("BANK_LIMIT_EXCEEDED",)
+    assert check(events, settings=config(bank_level_enforcement=False)).allowed
+
+
 def test_rl005_cancelled_does_not_count_and_rl006_released_still_counts():
     events = [event(index) for index in range(5)] + [event(5, cancelled=True)]
     assert check(events).allowed

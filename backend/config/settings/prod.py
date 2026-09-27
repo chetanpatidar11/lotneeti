@@ -42,6 +42,7 @@ CACHES = {
         "LOCATION": required_env("REDIS_URL"),
     }
 }
+RATE_LIMIT_TRUSTED_PROXY_IPS = {"127.0.0.1", "::1"}
 
 SECURE_SSL_REDIRECT = True
 SESSION_COOKIE_SECURE = True
@@ -55,3 +56,15 @@ SECURE_HSTS_PRELOAD = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = "DENY"
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {"safe_json": {"()": "core.observability.SafeJSONFormatter"}},
+    "handlers": {"stdout": {"class": "logging.StreamHandler", "formatter": "safe_json"}},
+    "loggers": {
+        "lotneeti": {"handlers": ["stdout"], "level": "INFO", "propagate": False},
+        "django.request": {"handlers": ["stdout"], "level": "ERROR", "propagate": False},
+        "django.security": {"handlers": ["stdout"], "level": "WARNING", "propagate": False},
+    },
+}
