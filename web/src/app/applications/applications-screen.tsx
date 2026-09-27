@@ -12,6 +12,10 @@ export type ApplicationItem = ApplicationHistoryInput & {
   ipo_name: string;
   applicant_name: string;
   bank_label: string;
+  upi_label: string;
+  close_date: string;
+  allotment_date: string;
+  sold_quantity: number;
   category: string;
   lots: number;
   max_quantity: number;
@@ -23,6 +27,28 @@ function displayTime(value: string): string {
 
 function statusLabel(status: ApplicationItem["status"]): string {
   return ({ PLANNED: "Planned", SUBMITTED: "Submitted", BLOCKED: "Blocked", ALLOTTED: "Allotted", NOT_ALLOTTED: "Not allotted" })[status];
+}
+
+function outcomeLabel(item: ApplicationItem): string {
+  if (item.status !== "ALLOTTED" || item.sold_quantity === 0) return statusLabel(item.status);
+  return item.sold_quantity >= (item.allotted_quantity ?? 0) ? "Sold" : "Partially sold";
+}
+
+function statusTone(item: ApplicationItem): "neutral" | "info" | "warning" | "positive" {
+  if (item.status === "SUBMITTED") return "warning";
+  if (item.status === "BLOCKED") return "info";
+  if (item.status === "ALLOTTED") return "positive";
+  return "neutral";
+}
+
+function dateLabel(value: string): string {
+  return new Intl.DateTimeFormat("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" }).format(new Date(`${value}T00:00:00Z`));
+}
+
+function importantDate(item: ApplicationItem): { label: string; value: string } {
+  if (item.status === "PLANNED" || item.status === "SUBMITTED") return { label: "Closes", value: dateLabel(item.close_date) };
+  if (item.status === "BLOCKED") return { label: "Allotment", value: dateLabel(item.allotment_date) };
+  return { label: "Result", value: item.result_at ? displayTime(item.result_at) : "—" };
 }
 
 function AllotmentForm({ item, busy, onSave }: { item: ApplicationItem; busy: boolean; onSave: (quantity: number, actualCost: string) => void }) {
@@ -38,17 +64,20 @@ function AllotmentForm({ item, busy, onSave }: { item: ApplicationItem; busy: bo
   </form>;
 }
 
-export default function ApplicationsScreen({ workspaceId, canEdit, initialItems, latestRun }: {
+export default function ApplicationsScreen({ workspaceId, canEdit, initialItems, latestRun, initialLoadError = false }: {
   workspaceId: string;
   canEdit: boolean;
   initialItems: ApplicationItem[];
   latestRun: { id: string | null; status: "READY" | "BLOCKED" | null };
+  initialLoadError?: boolean;
 }) {
   const [items, setItems] = useState(initialItems);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [resultId, setResultId] = useState<string | null>(null);
+  const selectedItem = items.find((item) => item.id === selectedId);
+  const resultItem = items.find((item) => item.id === resultId);
 
   async function startTracking() {
     if (!latestRun.id || latestRun.status !== "READY") return;
@@ -105,26 +134,46 @@ export default function ApplicationsScreen({ workspaceId, canEdit, initialItems,
     }
   }
 
-  return <main className="page settings-page"><div className="shell settings-shell">
-    <p className="eyebrow">Applications</p>
-    <h1>Track applications</h1>
-    <p className="intro">Mark an application Submitted after you place it, then Blocked when the mandate holds the money.</p>
-    {canEdit && latestRun.id && <button type="button" disabled={busy || latestRun.status !== "READY"} onClick={() => void startTracking()}>Track latest plan</button>}
-    {error && <p className="plan-error" role="alert">{error}</p>}
-    {items.length === 0 ? <p className="plan-note">No applications are being tracked yet. <Link href="/plan">Review a plan</Link> first.</p> : <div className="application-list">
-      {items.map((item) => <article className="application-card" key={item.id}>
-        <div><h2>{item.ipo_name}</h2><p>{item.applicant_name} · {item.category === "SHNI" ? "sHNI" : "Retail"} · {item.lots} {item.lots === 1 ? "lot" : "lots"}</p><small>{item.bank_label}</small></div>
-        <div><strong>{formatInr(item.amount)}</strong><p className={`plan-status ${item.status === "BLOCKED" ? "blocking" : "ready"}`}>{statusLabel(item.status)}</p></div>
-        {canEdit && <div className="application-actions">
-          {item.status === "PLANNED" && <button type="button" disabled={busy} onClick={() => void update(item, "submit")}>Mark Submitted</button>}
-          {item.status === "SUBMITTED" && <button type="button" disabled={busy} onClick={() => void update(item, "block")}>Mark Blocked</button>}
-          {item.status === "BLOCKED" && <button type="button" disabled={busy} onClick={() => void update(item, "not-allotted")}>Not Allotted</button>}
-          {item.status === "BLOCKED" && <AllotmentForm item={item} busy={busy} onSave={(quantity, actualCost) => void recordAllotment(item, quantity, actualCost)} />}
-        </div>}
-        <details className="application-history"><summary>History</summary><ol>
-          {applicationHistory(item).map((event, index) => <li key={`${event.at}-${index}`}><time dateTime={event.at}>{displayTime(event.at)}</time><span>{event.label}</span></li>)}
-        </ol></details>
-      </article>)}
-    </div>}
+  return <main className="page"><div className="shell applications-shell">
+    <PageHeader eyebrow="Execution" title="Applications" description="Track each application from plan to result." action={canEdit && latestRun.id ? <button type="button" disabled={busy || latestRun.status !== "READY"} onClick={() => void startTracking()}>Track latest plan</button> : undefined} />
+    {error && <div className="plan-error" role="alert">{error} <button className="button-ghost" type="button" onClick={() => window.location.reload()}>Retry</button></div>}
+    {initialLoadError ? <div className="plan-error" role="alert">Applications could not be loaded. <button className="button-ghost" type="button" onClick={() => window.location.reload()}>Retry</button></div> : items.length === 0 ? <EmptyState title="No applications are being tracked yet." detail="Save a ready plan, then track it here." action={<Link href="/plan">Review plan →</Link>} /> : <>
+      <div className="application-summary" aria-label="Application status summary">
+        <span><strong>{items.length}</strong> Total</span>
+        <span><strong>{items.filter((item) => item.status === "PLANNED").length}</strong> To submit</span>
+        <span><strong>{items.filter((item) => item.status === "SUBMITTED").length}</strong> Mandates pending</span>
+        <span><strong>{items.filter((item) => item.status === "BLOCKED").length}</strong> Results pending</span>
+      </div>
+      <div className="application-table-wrap"><table className="application-table">
+        <thead><tr><th scope="col">Applicant</th><th scope="col">IPO</th><th scope="col">Category</th><th scope="col">Amount</th><th scope="col">Bank / UPI</th><th scope="col">Status</th><th scope="col">Important date</th><th scope="col">Action</th></tr></thead>
+        <tbody>{items.map((item) => { const date = importantDate(item); return <tr key={item.id}>
+          <th scope="row" data-label="Applicant">{item.applicant_name}</th>
+          <td data-label="IPO"><strong>{item.ipo_name}</strong><small>{item.lots} {item.lots === 1 ? "lot" : "lots"}</small></td>
+          <td data-label="Category">{item.category === "SHNI" ? "sHNI" : "Retail"}</td>
+          <td data-label="Amount" className="money-cell">{formatInr(item.amount)}</td>
+          <td data-label="Bank / UPI">{item.bank_label}<small>{item.upi_label}</small></td>
+          <td data-label="Status"><StatusBadge tone={statusTone(item)}>{outcomeLabel(item)}</StatusBadge></td>
+          <td data-label="Important date"><small>{date.label}</small>{date.value}</td>
+          <td data-label="Action"><div className="application-row-actions">
+            {canEdit && item.status === "PLANNED" && <button type="button" disabled={busy} onClick={() => void update(item, "submit")}>Mark Submitted</button>}
+            {canEdit && item.status === "SUBMITTED" && <button type="button" disabled={busy} onClick={() => void update(item, "block")}>Mark Blocked</button>}
+            {canEdit && item.status === "BLOCKED" && <button type="button" disabled={busy} onClick={() => setResultId(item.id)}>Record Result</button>}
+            {item.status === "ALLOTTED" && <Link className="button-secondary" href="/portfolio">View holding</Link>}
+            <button type="button" className="button-ghost" onClick={() => setSelectedId(item.id)}>Details</button>
+          </div></td>
+        </tr>; })}</tbody>
+      </table></div>
+    </>}
+    {selectedItem && <Drawer title={`${selectedItem.applicant_name} · ${selectedItem.ipo_name}`} onClose={() => setSelectedId(null)}>
+      <div className="application-detail"><StatusBadge tone={statusTone(selectedItem)}>{outcomeLabel(selectedItem)}</StatusBadge><p>{selectedItem.category === "SHNI" ? "sHNI" : "Retail"} · {selectedItem.lots} {selectedItem.lots === 1 ? "lot" : "lots"} · {formatInr(selectedItem.amount)}</p><p>{selectedItem.bank_label} · {selectedItem.upi_label}</p></div>
+      <h3>Progress</h3><ol className="application-timeline">{applicationHistory(selectedItem).map((event, index) => <li key={`${event.at}-${index}`}><time dateTime={event.at}>{displayTime(event.at)}</time><span>{event.label}</span></li>)}</ol>
+      {selectedItem.status === "ALLOTTED" && <Link href="/portfolio">View holding →</Link>}
+    </Drawer>}
+    {resultItem && <Drawer title="Record application result" onClose={() => setResultId(null)}>
+      <p className="intro">{resultItem.applicant_name} · {resultItem.ipo_name} · {formatInr(resultItem.amount)} blocked</p>
+      <p>Recording the result releases the full application block. An allotment also deducts the actual cost from Balance.</p>
+      <div className="result-options"><h3>Not allotted</h3><button className="button-secondary" type="button" disabled={busy} onClick={() => void update(resultItem, "not-allotted")}>Record not allotted</button></div>
+      <div className="result-options"><h3>Allotted</h3><AllotmentForm item={resultItem} busy={busy} onSave={(quantity, actualCost) => void recordAllotment(resultItem, quantity, actualCost)} /></div>
+    </Drawer>}
   </div></main>;
 }

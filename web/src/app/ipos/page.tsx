@@ -13,8 +13,10 @@ type IPO = {
   id: string; issuer_name: string; symbol: string; issue_type: string; lower_price: string; upper_price: string;
   lot_size: number; open_date: string; close_date: string; allotment_date: string; listing_date: string | null;
   status: string; current_gmp: string | null; current_gmp_percent: string | null; current_gmp_observed_at: string | null;
+  gmp_source_count: number; gmp_source_conflict: boolean; gmp_stale_source_count: number;
+  gmp_data_state: "FRESH" | "STALE" | "MISSING"; gmp_has_founder_correction: boolean;
 };
-type Observation = { id: string; value_per_share: string; percent: string; observed_at: string; source_key: string };
+type Observation = { id: string; value_per_share: string; source_value_per_share: string; percent: string; observed_at: string; source_key: string; enabled: boolean; fresh: boolean; included_in_consensus: boolean };
 type Workspace = { id: string; role: string; auto_select_gmp_percent: string | null };
 type Filter = "all" | "open" | "upcoming" | "selected" | "skipped" | "mainboard" | "sme";
 const filters: { id: Filter; label: string }[] = [
@@ -83,11 +85,11 @@ export default async function IPOsPage({ searchParams }: { searchParams: Promise
       {visible.map((ipo, index) => {
         const selection = selectionMap.get(ipo.id);
         const history = histories[index];
-        const sourceCount = new Set(history.map((item) => item.source_key)).size;
-        const trend = history.length > 1 ? Number(history[0].value_per_share) - Number(history[1].value_per_share) : null;
+        const trendHistory = history.filter((item) => item.source_key === history[0]?.source_key);
+        const trend = trendHistory.length > 1 ? Number(trendHistory[0].value_per_share) - Number(trendHistory[1].value_per_share) : null;
         const shniLots = minimumShniLots(ipo.upper_price, ipo.lot_size);
         return <article className="ipo-card" key={ipo.id}>
-          <div className="ipo-head"><div><div className="ipo-title-line"><h2>{ipo.issuer_name}</h2><StatusBadge tone="info">{ipo.issue_type === "SME" ? "SME" : "Mainboard"}</StatusBadge><StatusBadge tone={ipo.status === "OPEN" ? "positive" : ipo.status === "UPCOMING" ? "info" : "neutral"}>{ipo.status}</StatusBadge></div><small>{ipo.symbol || "Public issue"}</small></div><div className="gmp-quote"><strong>{ipo.current_gmp === null ? "GMP unavailable" : `${formatInr(ipo.current_gmp)} · ${ipo.current_gmp_percent}%`}</strong><small>{trend === null ? "No trend yet" : trend > 0 ? "↗ Rising observation" : trend < 0 ? "↘ Falling observation" : "→ Unchanged observation"}</small></div></div>
+          <div className="ipo-head"><div><div className="ipo-title-line"><h2>{ipo.issuer_name}</h2><StatusBadge tone="info">{ipo.issue_type === "SME" ? "SME" : "Mainboard"}</StatusBadge><StatusBadge tone={ipo.status === "OPEN" ? "positive" : ipo.status === "UPCOMING" ? "info" : "neutral"}>{ipo.status}</StatusBadge>{ipo.gmp_source_conflict && <StatusBadge tone="warning">GMP sources differ</StatusBadge>}</div><small>{ipo.symbol || "Public issue"}</small></div><div className="gmp-quote"><strong>{ipo.current_gmp === null ? ipo.gmp_data_state === "STALE" ? "GMP stale" : "GMP unavailable" : `${formatInr(ipo.current_gmp)} · ${ipo.current_gmp_percent}%`}</strong><small>{trend === null ? "No trend yet" : trend > 0 ? "↗ Rising observation" : trend < 0 ? "↘ Falling observation" : "→ Unchanged observation"}</small></div></div>
           <div className="ipo-facts">
             <div><span>Price band</span><strong>{formatInr(ipo.lower_price)} – {formatInr(ipo.upper_price)}</strong></div>
             <div><span>Lot size</span><strong>{ipo.lot_size} shares</strong></div>
@@ -97,7 +99,7 @@ export default async function IPOsPage({ searchParams }: { searchParams: Promise
             <div><span>Close</span><strong>{dateLabel(ipo.close_date)}</strong></div>
             <div><span>Allotment / listing</span><strong>{dateLabel(ipo.allotment_date)} / {dateLabel(ipo.listing_date)}</strong></div>
           </div>
-          <div className="ipo-controls"><div className="ipo-gmp-detail"><span className="detail-label">GMP observation</span><span>{ipo.current_gmp_observed_at ? observedLabel(ipo.current_gmp_observed_at) : "No observation yet"} · {sourceCount} {sourceCount === 1 ? "source" : "sources"}</span><Trend history={history} />{history.length > 0 && <details className="sources-disclosure"><summary>Sources & history ({history.length})</summary><ol>{history.map((item) => <li key={item.id}>{observedLabel(item.observed_at)} · {formatInr(item.value_per_share)} · {item.source_key}</li>)}</ol></details>}</div>{workspace && <IPOChoice key={`${ipo.id}:${selection?.decision}:${selection?.selected}`} workspaceId={workspace.id} ipoId={ipo.id} initial={selection} canEdit={workspace.role !== "VIEWER"} />}</div>
+          <div className="ipo-controls"><div className="ipo-gmp-detail"><span className="detail-label">GMP observation</span><span>{ipo.current_gmp_observed_at ? observedLabel(ipo.current_gmp_observed_at) : "No fresh observation"} · {ipo.gmp_source_count} fresh {ipo.gmp_source_count === 1 ? "source" : "sources"}</span>{ipo.gmp_stale_source_count > 0 && <StatusBadge tone="warning">{ipo.gmp_stale_source_count} stale {ipo.gmp_stale_source_count === 1 ? "source" : "sources"}</StatusBadge>}{ipo.gmp_has_founder_correction && <StatusBadge tone="info">Founder corrected</StatusBadge>}<Trend history={trendHistory} />{history.length > 0 && <details className="sources-disclosure"><summary>Sources & history ({history.length})</summary><ol>{history.map((item) => <li key={item.id}>{observedLabel(item.observed_at)} · {formatInr(item.source_value_per_share)} · {item.source_key}{item.value_per_share !== item.source_value_per_share ? ` · corrected to ${formatInr(item.value_per_share)}` : ""}{!item.enabled ? " · disabled" : !item.fresh ? " · stale" : item.included_in_consensus ? " · current source" : " · earlier observation"}</li>)}</ol></details>}</div>{workspace && <IPOChoice key={`${ipo.id}:${selection?.decision}:${selection?.selected}`} workspaceId={workspace.id} ipoId={ipo.id} initial={selection} canEdit={workspace.role !== "VIEWER"} />}</div>
         </article>;
       })}
     </div>}

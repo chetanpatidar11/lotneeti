@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { backendUrl } from "@/lib/backend";
 import { getCurrentUser } from "@/lib/session";
+import { localPreviewEnabled } from "@/lib/local-preview";
 import { selectedWorkspace } from "@/lib/workspace";
 import AppNav from "./app-nav";
 import "./globals.css";
@@ -34,7 +35,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
     <html lang="en">
       <body>
         <a className="skip-link" href="#main-content">Skip to content</a>
-        {user ? <div className="app-layout"><AppNav email={user.email} workspaces={workspaces} selectedId={workspace?.id} founderAdmin={founderAdmin} /><div className="app-main" id="main-content" tabIndex={-1}>{children}</div></div> : <div id="main-content" tabIndex={-1}>{children}</div>}
+        {user ? <div className="app-layout"><AppNav email={user.email} workspaces={workspaces} selectedId={workspace?.id} founderAdmin={founderAdmin} localPreview={localPreviewEnabled() && user.email === "local-preview@lotneeti.test"} /><div className="app-main" id="main-content" tabIndex={-1}>{children}</div></div> : <div id="main-content" tabIndex={-1}>{children}</div>}
       </body>
     </html>
   );

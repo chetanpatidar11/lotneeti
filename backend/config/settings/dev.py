@@ -3,6 +3,7 @@ import os
 from .base import *  # noqa: F403
 
 DEBUG = True
+LOCAL_PREVIEW_AUTH_ENABLED = os.environ.get("LOTNEETI_LOCAL_PREVIEW_AUTH") == "1"
 ALLOWED_HOSTS = [
     host.strip()
     for host in os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")

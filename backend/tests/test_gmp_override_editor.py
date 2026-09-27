@@ -1,4 +1,4 @@
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
@@ -29,7 +29,7 @@ def test_mfa_gmp_editor_corrects_source_with_expiry_and_public_projection():
         ipo=ipo,
         source_key="synthetic",
         value_per_share=Decimal("10.00"),
-        observed_at=datetime(2026, 9, 27, 10, 0, tzinfo=UTC),
+        observed_at=timezone.now() - timedelta(hours=1),
     )
     staff = Client()
     staff.force_login(founder)
@@ -87,7 +87,7 @@ def test_disabled_provider_is_excluded_from_effective_latest_value():
     observation = ManualGMPProvider().record(
         ipo=ipo,
         value_per_share=Decimal("10.00"),
-        observed_at=datetime(2026, 9, 27, 10, 0, tzinfo=UTC),
+        observed_at=timezone.now() - timedelta(hours=1),
     )
     from ipos.provider_health import set_provider_enabled
 

@@ -21,5 +21,5 @@ export default async function ApplicationsPage() {
   ]);
   const items = itemsResponse.ok ? ((await itemsResponse.json()) as ApplicationItem[]) : [];
   const latest = runResponse.ok ? ((await runResponse.json()) as LatestRun) : { id: null, status: null };
-  return <ApplicationsScreen workspaceId={workspace.id} canEdit={workspace.role !== "VIEWER"} initialItems={items} latestRun={latest} />;
+  return <ApplicationsScreen workspaceId={workspace.id} canEdit={workspace.role !== "VIEWER"} initialItems={items} latestRun={latest} initialLoadError={!itemsResponse.ok || !runResponse.ok} />;
 }

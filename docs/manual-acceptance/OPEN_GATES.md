@@ -50,26 +50,11 @@ bash scripts/check.sh
 
 Then add the approved template and adapter tests, run the full gate, and manually compare row order, identifiers, category, lots, amount and total against the broker's acceptance file. Do not connect a real broker account.
 
-## K02 freshness and conflict decision
+## K02 GMP freshness and conflict decision — resolved locally
 
-The approved PRD, security specification, UX specification, Planner v2 specification and backlog require freshness/conflict review but do not define the thresholds or precedence. No default is recorded here. The founder or product owner must supply, in writing:
+On 2026-09-28 the Founder approved editable beta defaults of 24 hours for GMP freshness and 5.00 GMP percentage points relative to the effective IPO upper price for source conflict. The local implementation excludes stale observations from consensus, takes the median of the latest fresh enabled observation per source, marks disagreement at the threshold, preserves every source value, and gives an active Founder correction precedence. Founder Admin can edit both settings with a reason and audit trail. See [`docs/DATA_PROVIDERS.md`](../DATA_PROVIDERS.md) for exact boundaries and the exception view.
 
-```text
-IPO source stale after: ____ hours
-GMP source stale after: ____ hours
-Conflict means: same field differs by ____ (absolute/percent/tolerance), or: ____
-Required source count before conflict: ____
-Conflict severity: warning / blocking / other: ____
-Conflict precedence: manual override / source priority / newest observation / other: ____
-Missing required IPO fields: ____
-Missing required GMP fields: ____
-Whether stale/conflicting data may feed selection: yes / no / only after manual APPLY
-GMP consensus: eligible sources ____, minimum count ____, aggregation ____, disagreement rule ____
-NSE/BSE/SEBI feed permission/schema/redistribution approval references: ____
-Decision owner and date: ____
-```
-
-After approval, implement the smallest rule-specific tests and admin labels. Until then, keep the exception dashboard rule-free and do not infer freshness from timestamps alone.
+Separate external inputs remain open: approved NSE/BSE/SEBI feed access/schema/redistribution terms and an IPO field merge policy before promoting exchange snapshots into canonical IPO facts. These are feed integration gates, not missing K02 GMP defaults.
 
 ## M03 historical golden plans
 

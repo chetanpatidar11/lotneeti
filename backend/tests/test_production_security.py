@@ -22,6 +22,7 @@ def test_production_settings_require_https_and_secure_cookies(monkeypatch):
     for name, value in synthetic_env.items():
         monkeypatch.setenv(name, value)
     prod = import_module("config.settings.prod")
+    assert prod.LOCAL_PREVIEW_AUTH_ENABLED is False
     assert prod.SECURE_SSL_REDIRECT is True
     assert prod.SESSION_COOKIE_SECURE is True
     assert prod.SESSION_COOKIE_HTTPONLY is True

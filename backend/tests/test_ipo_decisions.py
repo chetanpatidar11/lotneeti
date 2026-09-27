@@ -1,8 +1,9 @@
-from datetime import UTC, date, datetime
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 
 from accounts.models import User, WorkspaceMembership
@@ -73,7 +74,7 @@ def test_ipo_manual_apply_skip_persists_and_overrides_workspace_threshold():
         ipo=ipo,
         source_key="synthetic",
         value_per_share=Decimal("10.00"),
-        observed_at=datetime(2026, 9, 26, 10, 0, tzinfo=UTC),
+        observed_at=timezone.now() - timedelta(hours=1),
     )
     client = APIClient()
     client.force_authenticate(owner)

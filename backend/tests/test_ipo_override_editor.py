@@ -1,9 +1,10 @@
-from datetime import UTC, datetime
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
 from django.test import Client, override_settings
 from django.urls import reverse
+from django.utils import timezone
 from rest_framework.test import APIClient
 from test_ipos import issue
 
@@ -28,7 +29,7 @@ def test_staff_override_editor_requires_mfa_and_drives_public_and_planner_values
         ipo=ipo,
         source_key="synthetic",
         value_per_share=Decimal("25.00"),
-        observed_at=datetime(2026, 9, 27, tzinfo=UTC),
+        observed_at=timezone.now() - timedelta(hours=1),
     )
     staff = Client()
     staff.force_login(founder)
@@ -70,7 +71,7 @@ def test_staff_override_editor_requires_mfa_and_drives_public_and_planner_values
     assert client.get(reverse("ipo-gmp-history", args=[ipo.pk])).data[0]["percent"] == "20.00"
     decision = client.get(reverse("workspace-ipo-decision-list", args=[workspace.pk]))
     assert decision.data[0]["selected"] is True
-    snapshot = build_snapshot(workspace=workspace, as_of=datetime(2026, 9, 27, tzinfo=UTC))
+    snapshot = build_snapshot(workspace=workspace, as_of=timezone.now())
     assert snapshot.ipos[0].upper_price == Decimal("125.00")
     assert snapshot.ipos[0].lot_size == 200
     assert len(snapshot.ipos) == 1

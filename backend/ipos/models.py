@@ -340,6 +340,30 @@ class GMPProviderState(models.Model):
             raise ValidationError("An override requires expiry and reason.")
 
 
+class GMPPolicy(models.Model):
+    """Founder-editable beta thresholds for current GMP and source exceptions."""
+
+    id = models.PositiveSmallIntegerField(primary_key=True, default=1, editable=False)
+    freshness_hours = models.PositiveIntegerField(default=24, validators=[MinValueValidator(1)])
+    conflict_threshold_percent_points = models.DecimalField(
+        max_digits=7,
+        decimal_places=2,
+        default=Decimal("5.00"),
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT
+    )
+
+    def __str__(self):
+        return "GMP consensus policy"
+
+    def clean(self):
+        if self.pk != 1:
+            raise ValidationError("Only one GMP policy can be active.")
+
+
 class IPOUserDecision(models.Model):
     class Decision(models.TextChoices):
         DEFAULT = "DEFAULT", "Automatic"

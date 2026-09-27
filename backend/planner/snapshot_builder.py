@@ -53,7 +53,7 @@ def build_snapshot(
     selected_ipos = []
     for ipo in published_ipos().order_by("id"):
         effective = effective_ipo_values(ipo)
-        latest = latest_effective_gmp(ipo)
+        latest = latest_effective_gmp(ipo, at=now)
         current_gmp = (
             gmp_percent(latest.value_per_share, effective["upper_price"]) if latest else None
         )

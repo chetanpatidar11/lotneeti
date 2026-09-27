@@ -274,9 +274,95 @@ input[type="checkbox"] { min-height: auto; accent-color: var(--accent); }
 .preference-list li { background: var(--surface-raised); }
 .add-investor-form { padding-top: 15px; border-color: var(--border); }
 .settings-shell select { width: auto; max-width: 100%; }
+.settings-create-workspace { width: min(100%, 380px); padding: 20px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.settings-tabs { display: flex; gap: 4px; overflow-x: auto; padding: 0 0 11px; border-bottom: 1px solid var(--border); }
+.settings-tab { flex: 0 0 auto; min-height: 39px; padding: 8px 12px; border-color: transparent; background: transparent; color: var(--muted); }
+.settings-tab:hover:not(:disabled) { background: var(--surface-raised); }
+.settings-tab.active { border-color: #2b6e50; background: var(--accent-deep); color: var(--accent); }
+.settings-section-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+.settings-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.settings-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.settings-table th, .settings-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+.settings-table thead th { position: sticky; top: 0; background: var(--surface-raised); color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.settings-table tbody tr:hover { background: var(--surface-hover); }
+.settings-table tbody tr:last-child th, .settings-table tbody tr:last-child td { border-bottom: 0; }
+.settings-table tbody th { font-weight: 750; color: var(--text); }
+.settings-table button { min-height: 31px; padding: 5px 9px; }
+.settings-priority, .settings-order { display: inline-flex; align-items: center; gap: 4px; }
+.settings-priority input { width: 53px; text-align: center; font-variant-numeric: tabular-nums; }
+.settings-order button { width: 27px; padding: 3px; font-size: 16px; }
+.settings-funding-list { display: grid; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.settings-funding-row { display: grid; grid-template-columns: minmax(170px, 1fr) minmax(160px, 1fr) 20px; width: 100%; min-height: 53px; padding: 10px 14px; border: 0; border-bottom: 1px solid var(--border); border-radius: 0; background: var(--surface); color: var(--text); text-align: left; }
+.settings-funding-row:last-child { border-bottom: 0; }
+.settings-funding-row:hover:not(:disabled) { background: var(--surface-hover); }
+.settings-funding-row strong, .settings-funding-row small { display: block; }
+.settings-funding-row small, .settings-funding-row > span:nth-child(2) { color: var(--muted); font-size: 11px; }
+.settings-account-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.settings-account-links a, .settings-account-links button { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 12px 15px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 13px; font-weight: 750; text-align: left; text-decoration: none; }
+.settings-account-links a:hover, .settings-account-links button:hover:not(:disabled) { border-color: var(--accent); background: var(--surface-hover); color: var(--text); }
+.settings-account-links span { color: var(--muted); font-size: 11px; font-weight: 550; }
+.settings-investor-detail { display: grid; gap: 0; margin-bottom: 18px; border: 1px solid var(--border); border-radius: 7px; }
+.settings-investor-detail p { display: flex; justify-content: space-between; gap: 12px; margin: 0; padding: 9px 11px; border-bottom: 1px solid var(--border); }
+.settings-investor-detail p:last-child { border-bottom: 0; }
+.settings-investor-detail strong { color: var(--muted); font-size: 11px; }
+.settings-linked { display: grid; gap: 0; margin-bottom: 20px; }
+.settings-linked h3 { margin: 11px 0 4px; color: var(--muted); font-size: 10px; letter-spacing: .06em; text-transform: uppercase; }
+.settings-linked p { margin: 0; padding: 6px 0; border-bottom: 1px solid var(--border); color: var(--text); font-size: 12px; }
+.settings-linked small { color: var(--muted); }
+.settings-message { margin: 15px 0 0; color: var(--positive); }
+.drawer-body .preferred-funding { padding: 0; border: 0; }
+.drawer-body .preference-list li { display: grid; gap: 7px; margin: 7px 0; padding: 10px; border: 1px solid var(--border); border-radius: 7px; }
+.drawer-body .preference-list li > span { color: var(--text); font-weight: 700; }
+.drawer-body .preference-list input[type="number"] { width: 80px; }
+.drawer-body .preference-add { display: grid; gap: 8px; margin-top: 13px; }
+.account-import-table ul { color: var(--danger); }
 
 .application-list { gap: 7px; margin-top: 13px; }
 .application-card { display: grid; grid-template-columns: minmax(0, 1.8fr) minmax(110px, .8fr) minmax(160px, 1fr); align-items: center; padding: 11px 14px; }
+.applications-shell { width: min(100%, 1440px); }
+.application-summary { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 13px; }
+.application-summary span { display: inline-flex; align-items: baseline; gap: 6px; min-height: 35px; padding: 7px 11px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); color: var(--muted); font-size: 11px; font-weight: 700; }
+.application-summary strong { color: var(--text); font-size: 15px; font-variant-numeric: tabular-nums; }
+.application-table-wrap { width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.application-table { width: 100%; min-width: 960px; border-collapse: collapse; font-size: 12px; }
+.application-table thead { position: sticky; top: 0; z-index: 1; background: var(--surface-raised); }
+.application-table th, .application-table td { padding: 10px 11px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: middle; }
+.application-table thead th { color: var(--faint); font-size: 10px; font-weight: 800; letter-spacing: .07em; text-transform: uppercase; white-space: nowrap; }
+.application-table tbody th { color: var(--text); font-weight: 750; }
+.application-table tbody tr:last-child th, .application-table tbody tr:last-child td { border-bottom: 0; }
+.application-table tbody tr:hover { background: var(--surface-hover); }
+.application-table td strong, .application-table td small { display: block; }
+.application-table td small { margin-top: 2px; color: var(--faint); }
+.application-table .money-cell { font-weight: 800; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.application-row-actions { display: flex; flex-wrap: wrap; gap: 5px; min-width: 145px; }
+.application-row-actions button, .application-row-actions a { min-height: 30px; padding: 5px 8px; font-size: 11px; white-space: nowrap; }
+.application-detail { padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.application-detail p { margin: 9px 0 0; color: var(--muted); }
+.application-timeline { display: grid; gap: 0; padding: 0 0 0 21px; list-style: none; border-left: 1px solid var(--border-strong); }
+.application-timeline li { position: relative; display: grid; gap: 2px; padding: 0 0 18px 16px; }
+.application-timeline li::before { content: ""; position: absolute; left: -27px; top: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+.application-timeline time { color: var(--faint); font-size: 11px; }
+.application-timeline span { color: var(--text); font-size: 12px; }
+.result-options { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+.result-options h3 { margin: 0 0 8px; font-size: 13px; }
+.result-options .allotment-form { display: grid; gap: 10px; }
+.result-options .allotment-form input { width: 100%; }
+.portfolio-shell { width: min(100%, 1440px); }
+.portfolio-metrics { margin-bottom: 12px; }
+.portfolio-panel { margin: 12px 0; padding: 14px; }
+.holding-list { display: grid; }
+.holding-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 12px; padding: 9px 2px; border-top: 1px solid var(--border); }
+.holding-row:first-child { border-top: 0; }
+.holding-row strong, .holding-row small { display: block; }
+.holding-row small { margin-top: 2px; color: var(--faint); }
+.profit-groups { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.profit-groups h3 { margin: 12px 0 6px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+.profit-groups .profit-line { margin: 4px 0; padding: 9px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface-raised); }
+.portfolio-sales-table { min-width: 760px; }
+.sale-drawer-form { display: grid; grid-template-columns: 1fr; gap: 12px; margin: 0; padding: 0; border: 0; background: transparent; }
+.sale-drawer-form label { display: grid; gap: 5px; }
+.sale-drawer-form input, .sale-drawer-form select { width: 100%; }
+.sale-preview-note { margin: 0; color: var(--muted); font-size: 12px; }
 .application-card h2 { font-size: 13px; }
 .application-card p { margin: 3px 0; }
 .application-card small { color: var(--faint); }
@@ -344,12 +430,34 @@ input[type="checkbox"] { min-height: auto; accent-color: var(--accent); }
   .ipo-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .ipo-controls { display: block; }
   .application-card { display: block; }
+  .application-table-wrap { overflow: visible; border: 0; background: transparent; }
+  .application-table, .application-table tbody, .application-table tr, .application-table th, .application-table td { display: block; width: 100%; min-width: 0; }
+  .application-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .application-table tr { margin-bottom: 10px; padding: 5px 11px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .application-table th, .application-table td { display: grid; grid-template-columns: 100px minmax(0, 1fr); gap: 9px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .application-table th::before, .application-table td::before { content: attr(data-label); color: var(--faint); font-size: 10px; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
+  .application-table td:last-child { border-bottom: 0; }
+  .application-row-actions button, .application-row-actions a { min-height: 44px; }
   .funds-detail-bar { align-items: flex-start; flex-direction: column; }
   .application-card > div:nth-child(2) { text-align: left; }
   .application-card .plan-status { margin: 5px 0; }
   .application-actions { justify-content: flex-start; margin-top: 9px; }
   .sale-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .profit-line { display: flex; flex-wrap: wrap; }
+  .profit-groups { grid-template-columns: 1fr; }
+  .holding-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .holding-row button { grid-column: 1 / -1; width: 100%; min-height: 44px; }
+  .settings-table-wrap { overflow: visible; border: 0; background: transparent; }
+  .settings-table, .settings-table tbody, .settings-table tr, .settings-table th, .settings-table td { display: block; width: 100%; }
+  .settings-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
+  .settings-table tr { margin-bottom: 9px; padding: 5px 11px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .settings-table th, .settings-table td { display: grid; grid-template-columns: 90px minmax(0, 1fr); align-items: center; gap: 8px; padding: 7px 0; white-space: normal; }
+  .settings-table th::before, .settings-table td::before { content: attr(data-label); color: var(--faint); font-size: 10px; font-weight: 800; text-transform: uppercase; }
+  .settings-table td:last-child { border-bottom: 0; }
+  .settings-table button { min-height: 44px; }
+  .settings-account-links { grid-template-columns: 1fr; }
+  .settings-funding-row { grid-template-columns: minmax(110px, 1fr) minmax(100px, 1fr) 14px; }
+  .settings-tab { min-height: 44px; }
 }
 @media (max-width: 480px) {
   .capital-grid, .metric-grid { gap: 7px; }

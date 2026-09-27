@@ -37,17 +37,19 @@ export default function AccountImport({ workspaceId, canEdit }: { workspaceId: s
     setMessage("");
     const body = new FormData();
     body.append("file", file);
-    const response = await fetch(`/api/workspaces/${workspaceId}/account-imports`, { method: "POST", body });
-    const data = await response.json() as ImportPreview & { detail?: string };
-    if (!response.ok) {
-      setMessage(data.detail ?? "We could not read that workbook.");
-    } else {
+    try {
+      const response = await fetch(`/api/workspaces/${workspaceId}/account-imports`, { method: "POST", body });
+      if (!response.ok) throw new Error("Import failed");
+      const data = await response.json() as ImportPreview;
       setPreview(data);
       setSelected(data.rows.filter((row) => row.errors.length === 0).map((row) => row.row_number));
       setMessage("Review the rows before importing them.");
+    } catch {
+      setMessage("We could not read that workbook. Check the template and try again.");
+    } finally {
+      setBusy(false);
+      event.target.value = "";
     }
-    setBusy(false);
-    event.target.value = "";
   }
 
   function toggle(rowNumber: number) {
@@ -57,15 +59,21 @@ export default function AccountImport({ workspaceId, canEdit }: { workspaceId: s
   async function confirm() {
     if (!preview || selected.length === 0) return;
     setBusy(true);
-    const response = await fetch(`/api/workspaces/${workspaceId}/account-imports/${preview.id}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ row_numbers: selected }),
-    });
-    const data = await response.json() as { imported_rows?: number; detail?: string };
-    setMessage(response.ok ? `${data.imported_rows} row(s) imported. Set each bank Balance before planning.` : (data.detail ?? "The import could not be confirmed."));
-    if (response.ok) setPreview({ ...preview, status: "CONFIRMED" });
-    setBusy(false);
+    try {
+      const response = await fetch(`/api/workspaces/${workspaceId}/account-imports/${preview.id}`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ row_numbers: selected }),
+      });
+      if (!response.ok) throw new Error("Import failed");
+      const data = await response.json() as { imported_rows: number };
+      setMessage(`${data.imported_rows} row(s) imported. Set each bank Balance before planning.`);
+      setPreview({ ...preview, status: "CONFIRMED" });
+    } catch {
+      setMessage("The selected rows could not be imported. Please try again.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   return <section className="account-import" aria-labelledby="account-import-heading">

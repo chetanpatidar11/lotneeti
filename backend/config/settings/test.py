@@ -3,6 +3,7 @@ import os
 from .base import *  # noqa: F403
 
 SECRET_KEY = "test-only-not-a-secret"
+LOCAL_PREVIEW_AUTH_ENABLED = os.environ.get("LOTNEETI_LOCAL_PREVIEW_AUTH") == "1"
 ALLOWED_HOSTS = ["testserver", "127.0.0.1", "localhost"]
 
 DATABASES = {

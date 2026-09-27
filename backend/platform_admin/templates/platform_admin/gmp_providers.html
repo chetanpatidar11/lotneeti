@@ -2,6 +2,7 @@
 
 {% block content %}
 <p><a href="{% url 'founder_admin:index' %}">Staff home</a></p>
+<p><a href="{% url 'founder_admin:gmp-policy' %}">Edit GMP policy</a> · <a href="{% url 'founder_admin:ipo-exceptions' %}">IPO data exceptions</a></p>
 <h1>GMP provider health</h1>
 <table>
   <thead><tr><th scope="col">Provider</th><th scope="col">Enabled</th><th scope="col">Last success</th><th scope="col">Last error</th><th scope="col">Override</th></tr></thead>

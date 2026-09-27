@@ -20,8 +20,9 @@ from core.audit import record_event
 from core.models import AuditEvent, BetaEvent
 from funding.models import BankAccount
 from ipos.content import publish_content_revision
-from ipos.gmp_effective import effective_observation_value
+from ipos.gmp_effective import effective_observation_value, resolve_gmp
 from ipos.gmp_overrides import resume_observation_auto, set_observation_override
+from ipos.gmp_policy import current_gmp_policy, update_gmp_policy
 from ipos.models import (
     IPO,
     GMPObservation,
@@ -53,6 +54,8 @@ class FounderAdminSite(AdminSite):
 
     def get_urls(self):
         return [
+            path("ipo-exceptions/", self.admin_view(self.ipo_exceptions), name="ipo-exceptions"),
+            path("gmp-policy/", self.admin_view(self.gmp_policy), name="gmp-policy"),
             path("gmp-providers/", self.admin_view(self.gmp_providers), name="gmp-providers"),
             path(
                 "gmp-providers/<str:provider_key>/",
@@ -93,6 +96,50 @@ class FounderAdminSite(AdminSite):
             ),
             *super().get_urls(),
         ]
+
+    def gmp_policy(self, request):
+        error = ""
+        if request.method == "POST":
+            try:
+                update_gmp_policy(
+                    freshness_hours=request.POST.get("freshness_hours"),
+                    conflict_threshold_percent_points=request.POST.get(
+                        "conflict_threshold_percent_points"
+                    ),
+                    reason=request.POST.get("reason", ""),
+                    actor=request.user,
+                )
+            except ValidationError as exc:
+                error = "; ".join(exc.messages)
+            else:
+                return HttpResponseRedirect(reverse("founder_admin:gmp-policy"))
+        return render(
+            request,
+            "platform_admin/gmp_policy.html",
+            {"title": "GMP policy", "policy": current_gmp_policy(), "error": error},
+        )
+
+    def ipo_exceptions(self, request):
+        now = timezone.now()
+        rows = []
+        for ipo in IPO.objects.filter(publication_state=IPO.PublicationState.PUBLISHED).order_by(
+            "issuer_name", "id"
+        ):
+            resolution = resolve_gmp(ipo, at=now)
+            issues = []
+            if resolution.effective is None:
+                issues.append("GMP stale" if resolution.stale_source_keys else "GMP missing")
+            if resolution.stale_source_keys and resolution.effective is not None:
+                issues.append("Stale GMP source")
+            if resolution.source_conflict:
+                issues.append("GMP source conflict")
+            if issues:
+                rows.append({"ipo": ipo, "resolution": resolution, "issues": issues})
+        return render(
+            request,
+            "platform_admin/ipo_exceptions.html",
+            {"title": "IPO data exceptions", "rows": rows, "policy": current_gmp_policy()},
+        )
 
     def gmp_providers(self, request):
         states = GMPProviderState.objects.order_by("provider_key")

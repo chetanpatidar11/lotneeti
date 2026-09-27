@@ -26,5 +26,5 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
   const applications = applicationsResponse.ok ? ((await applicationsResponse.json()) as AllottedApplication[]) : [];
   const sales = salesResponse.ok ? ((await salesResponse.json()) as SaleItem[]) : [];
   const report = reportResponse.ok ? ((await reportResponse.json()) as ProfitReport) : null;
-  return <PortfolioScreen workspaceId={workspace.id} canEdit={workspace.role !== "VIEWER"} initialApplications={applications} initialSales={sales} report={report} fromDate={period.from_date ?? ""} toDate={period.to_date ?? ""} />;
+  return <PortfolioScreen workspaceId={workspace.id} canEdit={workspace.role !== "VIEWER"} initialApplications={applications} initialSales={sales} report={report} fromDate={period.from_date ?? ""} toDate={period.to_date ?? ""} initialLoadError={!applicationsResponse.ok || !salesResponse.ok} />;
 }

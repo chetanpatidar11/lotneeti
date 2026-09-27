@@ -2,7 +2,13 @@
 
 Updated 2026-09-27. The local implementation and automated gate are green, and the single-host AWS beta is live at `https://44-192-105-250.sslip.io/`. SES email sign-in is verified with one founder inbox, and the founder-approved beta platform funding policy is `WARN`. Founder-supplied product inputs and Android/device acceptance remain gates. This is a founder test environment, not production approval. No OpenAI API or paid external API was used; no real PAN or bank data was loaded.
 
-Local update 2026-09-28 (not deployed): commit `77ed927` adds normalized NSE/BSE/SEBI fixture/permitted-feed IPO observations with explicit canonical IPO links and immutable, idempotent source snapshots. They remain review-only until feed rights/schema and K02 merge/freshness/precedence rules are approved. Public IPO values still come from the existing canonical IPO plus audited field overrides. The full local gate passed with 284 backend, 20 frontend and 1 Android package test; fresh test-settings migration through `ipos.0009` passed. No AWS resources were accessed or changed in this run.
+Local update 2026-09-28 (not deployed): commit `77ed927` adds normalized NSE/BSE/SEBI fixture/permitted-feed IPO observations with explicit canonical IPO links and immutable, idempotent source snapshots. They remain review-only until feed rights/schema and an IPO field merge policy are approved. K02 GMP defaults are now implemented locally: 24-hour freshness, 5-point source conflict, fresh-source median and Founder correction precedence, with editable MFA-gated Founder Admin controls and exception view. See [`docs/DATA_PROVIDERS.md`](DATA_PROVIDERS.md). The earlier D03 gate passed with 284 backend, 20 frontend and 1 Android package test; this K02 change is not deployed. No AWS resources were accessed or changed in this run.
+
+The latest local gate passed with **292 backend tests, 22 frontend tests and 1 Android package test**; Planner v2 matrix, Ruff, Django checks/migration drift, frontend lint/typecheck/build and Capacitor gates passed. Migration `ipos.0010_gmppolicy` is included. The local K02, preview-auth and frontend changes are uncommitted because this session cannot create `.git/index.lock` (`Operation not permitted`). Founder Admin review routes are `/admin/ipo-exceptions/` and `/admin/gmp-policy/` after separate Founder MFA login. The AWS beta still runs the earlier deployed code.
+
+A sixth focused K02 test was added and passed in the latest full gate. The locally running SQLite preview applied `ipos.0010` and returned authenticated HTTP 200 for all seven main routes, plus the IPO API and health. This preview uses a synthetic local account and an empty workspace; it is separate from the AWS beta.
+
+Local frontend continuation: Applications now has a dense operational table and detail/result drawers; Portfolio has holdings, profit metrics, grouped reports and a sale drawer; Settings has tabs, a compact investor priority table, masked linked-account details, funding and add-investor drawers, and a separate import utility. Shared loading and error states were added. Founder Admin now has a dark shell and grouped operational home; existing MFA permissions stay in place. Existing backend result/sale endpoints provide the financial amounts; Planner v2 rules and calculations did not change. Review `/`, `/ipos`, `/plan`, `/funds`, `/applications`, `/portfolio` and `/settings/investors` at `http://127.0.0.1:3000/`, and `/admin/` with a separate local Founder MFA account. Chrome and Safari computer-use requests were automatically rejected and the in-app browser was unavailable, so screenshot inspection at 1440, 1280, 1024, 768 and 390px remains unfinished. Source, build, tests and authenticated HTTP checks passed; the redesign is still awaiting visual and founder review. No deployment was made.
 
 ## 1. Fully complete locally
 
@@ -60,7 +66,7 @@ Terminal 1, Django API:
 
 ```bash
 cd /Users/chetanpatidar/Projects/lotneeti-new
-PLANNER_PLATFORM_CROSS_FUNDING_POLICY=WARN \
+LOTNEETI_LOCAL_PREVIEW_AUTH=1 PLANNER_PLATFORM_CROSS_FUNDING_POLICY=WARN \
   .venv/bin/python backend/manage.py runserver 127.0.0.1:8000
 ```
 
@@ -68,27 +74,30 @@ Terminal 2, Next.js web app:
 
 ```bash
 cd /Users/chetanpatidar/Projects/lotneeti-new
-API_BASE_URL=http://127.0.0.1:8000/api/v1 \
+LOTNEETI_LOCAL_PREVIEW_AUTH=1 FRONTEND_BASE_URL=http://127.0.0.1:3000 \
+  API_BASE_URL=http://127.0.0.1:8000/api/v1 \
   npm run dev --prefix web
 ```
 
-Open `http://127.0.0.1:3000`. Local email sign-in links print in the Django terminal. Create a synthetic founder account with `createsuperuser`, then run:
+Open `http://127.0.0.1:3000`. The opt-in local preview signs in a synthetic `local-preview@lotneeti.test` user and creates an empty Local Preview workspace. It accepts only loopback requests and is disabled in production settings. Leave `LOTNEETI_LOCAL_PREVIEW_AUTH` unset to use normal email links. Create a separate synthetic founder account with `createsuperuser`, then run:
 
 ```bash
 .venv/bin/python backend/manage.py enroll_founder_totp founder@example.test
 ```
+
+When Docker is unavailable, use the isolated SQLite test settings for a local UI preview: run `LOTNEETI_TEST_DB=/private/tmp/lotneeti-local-preview.sqlite3 .venv/bin/python backend/manage.py migrate --settings=config.settings.test`, then add `LOTNEETI_TEST_DB=/private/tmp/lotneeti-local-preview.sqlite3`, `--settings=config.settings.test` and `--insecure` to the Django command above. `--insecure` is only for this local preview so Django serves the Founder Admin stylesheet under `DEBUG=False`. This preview has no production data or Redis-backed jobs.
 
 Use only synthetic PANs such as `TESTX0001A`, fake account numbers and `person@example.test` addresses. The account-import manual flow and sample contract are documented in [`docs/manual-acceptance/OPEN_GATES.md`](manual-acceptance/OPEN_GATES.md).
 
 ## 4. Remaining blocked work
 
 - G03: `docs/samples/` contains the account import `.xlsx`, but no broker workbook. [`docs/samples/BrokerExportMapping.template.csv`](samples/BrokerExportMapping.template.csv) has only headings and a blank row, so it defines no destination columns. Generic CSV is complete. Supply the approved broker workbook and filled mapping, then implement and compare the exact adapter output as described in [`docs/manual-acceptance/OPEN_GATES.md`](manual-acceptance/OPEN_GATES.md).
-- K02: the approved documents require stale/conflicting IPO/GMP exceptions to be reviewed, but define no stale age, conflict tolerance, source precedence or selection consequence. Do not invent these rules. Fill the decision worksheet in [`docs/manual-acceptance/OPEN_GATES.md`](manual-acceptance/OPEN_GATES.md), then implement and test the approved rule.
-- External IPO/GMP providers: approve the NSE/BSE/SEBI feed access method, field schema and redistribution terms before enabling a fetch or promoting observations into canonical values. Approve a GMP source eligibility and consensus rule (including freshness, minimum sources, aggregation and disagreement handling) before changing the current latest-enabled-observation behavior. The local exchange snapshot boundary is implemented and tested, but live integration and consensus are not complete.
+- External IPO/GMP providers: approve the NSE/BSE/SEBI feed access method, field schema and redistribution terms before enabling a fetch or promoting observations into canonical IPO values. An IPO field merge policy remains open. K02 GMP eligibility and consensus are resolved locally, but the change has not been deployed to AWS.
 - M03: 15–25 founder-approved sanitized historical expected plans and mappings are missing. Use [`docs/samples/historical-golden-plan.template.json`](samples/historical-golden-plan.template.json); synthetic snapshots cannot substitute for founder approval.
 - Email sign-in is limited to verified recipient addresses while SES remains in sandbox. The first real sign-in email landed in Gmail Spam; founder testing should check Spam. For additional testers, verify each email identity in SES or request SES production access after separate approval. No AWS console action is needed for this one-inbox beta test.
 - Android: the HTTPS beta host is now reachable, but Java/Android SDK, APK compilation/signing and physical-device acceptance remain open. The current package is a hosted-site launcher, not a bundled offline client.
-- Git metadata was writable for the 2026-09-28 D03 commit `77ed927`. Other existing in-progress frontend and SES/deployment documentation edits remain uncommitted in the worktree.
+- Frontend visual review: the local UI is running and all main routes pass authenticated HTTP checks, but computer-use approval rejected Chrome and Safari and no in-app browser was available. Layout, overflow, focus and touch-target checks at the requested five widths remain a manual review gate. The Django Founder Admin dark shell and grouped home passed template/static checks but need the same visual pass. Settings account details are masked/read-only; account creation beyond the existing import and funding flows remains a UX follow-up.
+- Git metadata was writable for the 2026-09-28 D03 commit `77ed927`. The current local K02/frontend work remains uncommitted because `.git/index.lock` cannot be created in this session (`Operation not permitted`).
 
 ## 5. Exact manual acceptance steps
 
@@ -104,7 +113,7 @@ Use only synthetic PANs such as `TESTX0001A`, fake account numbers and `person@e
 10. Track Submitted and Blocked applications; record not allotted, full allotment and partial allotment; verify next-day cash reuse.
 11. Record split sales and charges; verify realized profit, ROI and IPO/investor/workspace date filters.
 12. Run browser keyboard/focus checks and a screen-reader pass; warnings must have icon, label and text.
-13. Complete the G03, K02 and M03 supplied-input steps before calling the beta product complete.
+13. Review the local K02 GMP conflict/staleness view, then complete the G03 and M03 supplied-input steps before calling the beta product complete.
 
 ## 6. Exact Android APK commands
 
@@ -176,4 +185,4 @@ The tested script archives the current `backend/`, `web/` and `deploy/` worktree
 ### Remaining deployment blockers
 
 - SES remains in sandbox: only the verified founder inbox can currently receive sign-in mail. No manual AWS console step is needed for this inbox. For additional testers, verify only their specific email identities in SES and have each owner click the verification email; production access would require a separate SES request. Gmail placed the first founder sign-in email in Spam, likely because SES sent from a Gmail address without an owned domain. Check Spam during founder testing; there is no domain purchase in this beta plan.
-- G03 broker workbook/mapping, K02 freshness/conflict rules, M03 approved historical plans and Android/device manual acceptance remain as listed above. No real financial data has been loaded. Do not call this environment production-ready until those gates are resolved.
+- G03 broker workbook/mapping, M03 approved historical plans, feed access/IPO merge approval and Android/device manual acceptance remain as listed above. K02 GMP rules are locally implemented but not deployed. No real financial data has been loaded. Do not call this environment production-ready until those gates are resolved.

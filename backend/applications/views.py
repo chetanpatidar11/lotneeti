@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.core.exceptions import ValidationError
+from django.db.models import Sum
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import serializers
@@ -40,6 +41,9 @@ def _writer(workspace, user):
 
 
 def _result(item):
+    sold_quantity = getattr(item, "sold_quantity", None)
+    if sold_quantity is None:
+        sold_quantity = item.sales.aggregate(total=Sum("quantity", default=0))["total"]
     return {
         "id": str(item.pk),
         "ipo": str(item.ipo_id),
@@ -48,6 +52,10 @@ def _result(item):
         "applicant_name": item.applicant.name,
         "bank": str(item.bank_id),
         "bank_label": f"{item.bank.bank_name} {item.bank.account_masked}",
+        "upi_label": item.upi.handle_masked,
+        "close_date": item.ipo.close_date,
+        "allotment_date": item.ipo.allotment_date,
+        "sold_quantity": sold_quantity,
         "category": item.category,
         "lots": item.lots,
         "max_quantity": item.lots * item.ipo.lot_size,
@@ -74,8 +82,10 @@ class ApplicationListView(APIView):
 
     def get(self, request, workspace_id):
         workspace = _workspace(request, workspace_id)
-        items = Application.objects.filter(workspace=workspace).select_related(
-            "ipo", "applicant", "bank"
+        items = (
+            Application.objects.filter(workspace=workspace)
+            .select_related("ipo", "applicant", "bank", "upi")
+            .annotate(sold_quantity=Sum("sales__quantity", default=0))
         )
         return Response([_result(item) for item in items])
 
@@ -101,7 +111,7 @@ class ApplicationActionView(APIView):
         workspace = _workspace(request, workspace_id)
         _writer(workspace, request.user)
         item = get_object_or_404(
-            Application.objects.select_related("ipo", "applicant", "bank").filter(
+            Application.objects.select_related("ipo", "applicant", "bank", "upi").filter(
                 workspace=workspace
             ),
             pk=application_id,
