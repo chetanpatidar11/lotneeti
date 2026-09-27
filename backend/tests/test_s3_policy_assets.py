@@ -39,5 +39,20 @@ def test_beta_bucket_template_is_private_encrypted_and_scoped():
     assert role["ManagedPolicyArns"] == [
         {"Ref": "ExportAccessPolicy"},
         {"Ref": "BackupAccessPolicy"},
+        {"Fn::If": ["HasSESSender", {"Ref": "SESAccessPolicy"}, {"Ref": "AWS::NoValue"}]},
+    ]
+    ses_policy = resources["SESAccessPolicy"]
+    assert ses_policy["Condition"] == "HasSESSender"
+    assert ses_policy["Properties"]["PolicyDocument"]["Statement"] == [
+        {
+            "Effect": "Allow",
+            "Action": "ses:SendRawEmail",
+            "Resource": {
+                "Fn::Sub": (
+                    "arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:"
+                    "identity/${SESSenderEmail}"
+                )
+            },
+        }
     ]
     assert resources["BetaInstanceProfile"]["Properties"]["Roles"] == [{"Ref": "BetaInstanceRole"}]

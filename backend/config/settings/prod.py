@@ -16,12 +16,19 @@ SECRET_KEY = required_env("DJANGO_SECRET_KEY")
 ALLOWED_HOSTS = [host.strip() for host in required_env("DJANGO_ALLOWED_HOSTS").split(",")]
 FRONTEND_BASE_URL = required_env("FRONTEND_BASE_URL")
 DEFAULT_FROM_EMAIL = required_env("DEFAULT_FROM_EMAIL")
-EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-EMAIL_HOST = required_env("EMAIL_HOST")
-EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = required_env("EMAIL_HOST_USER")
-EMAIL_HOST_PASSWORD = required_env("EMAIL_HOST_PASSWORD")
+EMAIL_DELIVERY = os.environ.get("EMAIL_DELIVERY", "smtp").lower()
+if EMAIL_DELIVERY == "ses":
+    EMAIL_BACKEND = "accounts.ses_email.SESEmailBackend"
+    AWS_SES_REGION = required_env("AWS_SES_REGION")
+elif EMAIL_DELIVERY == "smtp":
+    EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+    EMAIL_HOST = required_env("EMAIL_HOST")
+    EMAIL_PORT = int(os.environ.get("EMAIL_PORT", "587"))
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = required_env("EMAIL_HOST_USER")
+    EMAIL_HOST_PASSWORD = required_env("EMAIL_HOST_PASSWORD")
+else:
+    raise ImproperlyConfigured("EMAIL_DELIVERY must be ses or smtp")
 
 DATABASES = {
     "default": {

@@ -302,12 +302,26 @@ class WorkspaceCapitalView(APIView):
         totals = capital_totals(
             balances, blocked_by_bank=blocked_by_bank, planned_by_bank=planned_by_bank
         )
+        by_bank = {}
+        for bank_id, balance in balances.items():
+            bank_totals = capital_totals(
+                {bank_id: balance},
+                blocked_by_bank=blocked_by_bank,
+                planned_by_bank=planned_by_bank,
+            )
+            by_bank[bank_id] = {
+                "balance": str(bank_totals.balance),
+                "blocked": str(bank_totals.blocked),
+                "planned": str(bank_totals.planned),
+                "available": str(bank_totals.available),
+            }
         return Response(
             {
                 "balance": str(totals.balance),
                 "blocked": str(totals.blocked),
                 "planned": str(totals.planned),
                 "available": str(totals.available),
+                "by_bank": by_bank,
             }
         )
 

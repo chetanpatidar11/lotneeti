@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useState } from "react";
 import { applicationHistory, type ApplicationHistoryInput } from "@/lib/application-history";
 import { formatInr } from "@/lib/money";
+import { Drawer } from "@/components/drawer";
+import { EmptyState, PageHeader, StatusBadge } from "@/components/ui";
 
 export type ApplicationItem = ApplicationHistoryInput & {
   id: string;
@@ -45,6 +47,8 @@ export default function ApplicationsScreen({ workspaceId, canEdit, initialItems,
   const [items, setItems] = useState(initialItems);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [resultId, setResultId] = useState<string | null>(null);
 
   async function startTracking() {
     if (!latestRun.id || latestRun.status !== "READY") return;
@@ -53,7 +57,7 @@ export default function ApplicationsScreen({ workspaceId, canEdit, initialItems,
     try {
       const response = await fetch(`/api/workspaces/${workspaceId}/planner/runs/${latestRun.id}/track`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.detail || "We could not start tracking this plan.");
+      if (!response.ok) throw new Error("We could not start tracking this plan.");
       setItems((current) => {
         const tracked = result as ApplicationItem[];
         const trackedIds = new Set(tracked.map((item) => item.id));
@@ -72,8 +76,9 @@ export default function ApplicationsScreen({ workspaceId, canEdit, initialItems,
     try {
       const response = await fetch(`/api/workspaces/${workspaceId}/applications/${item.id}/${action}`, { method: "POST", headers: { "content-type": "application/json" }, body: "{}" });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.detail || "We could not update this application.");
+      if (!response.ok) throw new Error("We could not update this application.");
       setItems((current) => current.map((entry) => entry.id === item.id ? result as ApplicationItem : entry));
+      setResultId(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "We could not update this application.");
     } finally {
@@ -90,8 +95,9 @@ export default function ApplicationsScreen({ workspaceId, canEdit, initialItems,
         body: JSON.stringify({ quantity, actual_cost: actualCost }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.detail || "We could not record this allotment.");
+      if (!response.ok) throw new Error("We could not record this allotment. Check the quantity and actual cost.");
       setItems((current) => current.map((entry) => entry.id === item.id ? result as ApplicationItem : entry));
+      setResultId(null);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "We could not record this allotment.");
     } finally {

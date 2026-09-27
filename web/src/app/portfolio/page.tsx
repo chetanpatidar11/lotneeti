@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { backendUrl } from "@/lib/backend";
+import { selectedWorkspace } from "@/lib/workspace";
 import PortfolioScreen, { type AllottedApplication, type ProfitReport, type SaleItem } from "./portfolio-screen";
 
 type Workspace = { id: string; role: string };
@@ -12,7 +13,7 @@ export default async function PortfolioPage({ searchParams }: { searchParams: Pr
   const headers = { cookie: cookieHeader };
   const workspacesResponse = await fetch(backendUrl("workspaces/"), { headers, cache: "no-store" });
   if (!workspacesResponse.ok) redirect("/sign-in");
-  const workspace = ((await workspacesResponse.json()) as Workspace[])[0];
+  const workspace = await selectedWorkspace((await workspacesResponse.json()) as Workspace[]);
   if (!workspace) redirect("/settings/investors");
   const reportQuery = new URLSearchParams();
   if (period.from_date) reportQuery.set("from_date", period.from_date);

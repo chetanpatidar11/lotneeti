@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { StatusBadge } from "@/components/ui";
 
 export type IPOSelection = {
   ipo: string;
@@ -38,13 +39,13 @@ export default function IPOChoice({ workspaceId, ipoId, initial, canEdit }: {
     }
   }
 
-  const label = choice.decision === "APPLY" ? "Apply selected manually" : choice.decision === "SKIP" ? "Skipped manually" : choice.selected ? "Selected by GMP threshold" : "Not selected automatically";
+  const label = choice.decision === "APPLY" ? "Manually selected" : choice.decision === "SKIP" ? "Manually skipped" : choice.selected ? "Auto selected" : "Not selected";
   return <div className="ipo-choice">
-    <p><strong>{label}</strong></p>
+    <p><StatusBadge tone={choice.decision === "SKIP" ? "danger" : choice.selected ? "positive" : "neutral"}>{label}</StatusBadge>{choice.decision === "DEFAULT" && <small className="selection-rule">{choice.selected ? "Matches your auto-select rule" : "Does not match your auto-select rule"}</small>}</p>
     {canEdit && <div className="ipo-choice-buttons">
+      <button type="button" disabled={busy} aria-pressed={choice.decision === "DEFAULT"} onClick={() => save({ decision: "DEFAULT" })}>Automatic</button>
       <button type="button" disabled={busy} aria-pressed={choice.decision === "APPLY"} onClick={() => save({ decision: "APPLY" })}>Apply</button>
       <button type="button" disabled={busy} aria-pressed={choice.decision === "SKIP"} onClick={() => save({ decision: "SKIP" })}>Skip</button>
-      {choice.decision !== "DEFAULT" && <button type="button" disabled={busy} onClick={() => save({ decision: "DEFAULT" })}>Reset to automatic</button>}
     </div>}
     {choice.selected && <label className="ipo-mode">IPO mode
       <select value={choice.mode} disabled={!canEdit || busy} onChange={(event) => save({ mode: event.target.value as IPOSelection["mode"] })}>

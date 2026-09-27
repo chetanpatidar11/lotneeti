@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { backendUrl } from "@/lib/backend";
+import { selectedWorkspace } from "@/lib/workspace";
 import PrioritySettings from "./priority-settings";
 import type { BankOption, FundingPreference } from "./preferred-funding";
 
@@ -23,7 +24,7 @@ export default async function InvestorSettingsPage() {
   const workspaceResponse = await getData("workspaces/", cookieHeader);
   if (!workspaceResponse.ok) redirect("/sign-in");
   const workspaces = (await workspaceResponse.json()) as Workspace[];
-  const workspace = workspaces[0];
+  const workspace = await selectedWorkspace(workspaces);
   let investors: Investor[] = [];
   let banks: BankOption[] = [];
   const preferences: Record<string, FundingPreference[]> = {};

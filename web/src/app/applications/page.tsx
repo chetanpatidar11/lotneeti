@@ -1,6 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { backendUrl } from "@/lib/backend";
+import { selectedWorkspace } from "@/lib/workspace";
 import ApplicationsScreen, { type ApplicationItem } from "./applications-screen";
 
 type Workspace = { id: string; role: string };
@@ -12,7 +13,7 @@ export default async function ApplicationsPage() {
   const headers = { cookie: cookieHeader };
   const workspacesResponse = await fetch(backendUrl("workspaces/"), { headers, cache: "no-store" });
   if (!workspacesResponse.ok) redirect("/sign-in");
-  const workspace = ((await workspacesResponse.json()) as Workspace[])[0];
+  const workspace = await selectedWorkspace((await workspacesResponse.json()) as Workspace[]);
   if (!workspace) redirect("/settings/investors");
   const [itemsResponse, runResponse] = await Promise.all([
     fetch(backendUrl(`workspaces/${workspace.id}/applications/`), { headers, cache: "no-store" }),

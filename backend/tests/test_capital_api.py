@@ -30,11 +30,20 @@ def test_workspace_capital_uses_latest_saved_plan_and_is_member_scoped():
     client.force_authenticate(owner)
     url = reverse("workspace-capital", args=[workspace.pk])
     initial = client.get(url)
+    bank_id = str(BankAccount.objects.get(workspace=workspace).pk)
     assert initial.data == {
         "balance": "50000.00",
         "blocked": "0.00",
         "planned": "0.00",
         "available": "50000.00",
+        "by_bank": {
+            bank_id: {
+                "balance": "50000.00",
+                "blocked": "0.00",
+                "planned": "0.00",
+                "available": "50000.00",
+            }
+        },
     }
     create_plan_run(workspace=workspace, snapshot=snapshot, actor=owner)
     planned = client.get(url)

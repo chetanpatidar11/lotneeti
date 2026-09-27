@@ -9,7 +9,15 @@
     "BackupBucketName": {
       "Type": "String",
       "Description": "Globally unique private backup bucket name"
+    },
+    "SESSenderEmail": {
+      "Type": "String",
+      "Default": "",
+      "Description": "Optional single verified SES email identity for beta sign-in sending"
     }
+  },
+  "Conditions": {
+    "HasSESSender": {"Fn::Not": [{"Fn::Equals": [{"Ref": "SESSenderEmail"}, ""]}]}
   },
   "Resources": {
     "ExportBucket": {
@@ -227,6 +235,21 @@
         }
       }
     },
+    "SESAccessPolicy": {
+      "Type": "AWS::IAM::ManagedPolicy",
+      "Condition": "HasSESSender",
+      "Properties": {
+        "Description": "Allow the beta instance to send only from its verified SES email identity.",
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [{
+            "Effect": "Allow",
+            "Action": "ses:SendRawEmail",
+            "Resource": {"Fn::Sub": "arn:${AWS::Partition}:ses:${AWS::Region}:${AWS::AccountId}:identity/${SESSenderEmail}"}
+          }]
+        }
+      }
+    },
     "BetaInstanceRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
@@ -242,7 +265,8 @@
         },
         "ManagedPolicyArns": [
           {"Ref": "ExportAccessPolicy"},
-          {"Ref": "BackupAccessPolicy"}
+          {"Ref": "BackupAccessPolicy"},
+          {"Fn::If": ["HasSESSender", {"Ref": "SESAccessPolicy"}, {"Ref": "AWS::NoValue"}]}
         ],
         "Tags": [
           {"Key": "Project", "Value": "LotNeeti"},
@@ -277,6 +301,10 @@
       "Value": {
         "Ref": "BackupAccessPolicy"
       }
+    },
+    "SESAccessPolicyArn": {
+      "Condition": "HasSESSender",
+      "Value": {"Ref": "SESAccessPolicy"}
     },
     "InstanceProfileArn": {
       "Value": {"Fn::GetAtt": ["BetaInstanceProfile", "Arn"]}

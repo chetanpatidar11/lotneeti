@@ -1,12 +1,13 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { backendUrl } from "@/lib/backend";
+import { selectedWorkspace } from "@/lib/workspace";
 import PlanScreen, { type PlanLookups } from "./plan-screen";
 
-type Workspace = { id: string };
+type Workspace = { id: string; role: string };
 type Investor = { id: string; name: string; planning_priority: number; active: boolean };
 type Bank = { id: string; owner: string; bank_name: string; account_masked: string; current_balance: string; active: boolean; cross_funding_policy: string };
-type IPO = { id: string; issuer_name: string; upper_price: string; lot_size: number };
+type IPO = { id: string; issuer_name: string; upper_price: string; lot_size: number; current_gmp_percent: string | null; close_date: string };
 type Demat = { id: string; depository: string; dp_id_masked: string; client_id_masked: string; active: boolean };
 type UPI = { id: string; handle_masked: string; holder: string; active: boolean; verified: boolean };
 type Preference = { bank: string; priority: number; enabled: boolean };
@@ -23,7 +24,7 @@ export default async function PlanPage() {
   const workspaceResponse = await getData("workspaces/", cookieHeader);
   if (!workspaceResponse.ok) redirect("/sign-in");
   const workspaces = (await workspaceResponse.json()) as Workspace[];
-  const workspace = workspaces[0];
+  const workspace = await selectedWorkspace(workspaces);
   if (!workspace) redirect("/settings/investors");
   const prefix = `workspaces/${workspace.id}`;
   const [investorResponse, bankResponse, ipoResponse, decisionResponse, capitalResponse] = await Promise.all([
@@ -53,7 +54,7 @@ export default async function PlanPage() {
     })),
   ]);
   const lookups: PlanLookups = {
-    ipos: Object.fromEntries(ipos.map((ipo) => [ipo.id, { name: ipo.issuer_name, upperPrice: ipo.upper_price, lotSize: ipo.lot_size }])),
+    ipos: Object.fromEntries(ipos.map((ipo) => [ipo.id, { name: ipo.issuer_name, upperPrice: ipo.upper_price, lotSize: ipo.lot_size, gmpPercent: ipo.current_gmp_percent, closeDate: ipo.close_date }])),
     applicants: Object.fromEntries(investors.map((investor) => [investor.id, { name: investor.name, priority: investor.planning_priority, active: investor.active }])),
     demats: Object.fromEntries(dematLists.flatMap((group) => group.items.map((demat) => [demat.id, { label: `${demat.depository} ${demat.dp_id_masked} / ${demat.client_id_masked}`, applicant: group.applicant, active: demat.active }]))),
     banks: Object.fromEntries(banks.map((bank) => [bank.id, { label: `${bank.bank_name} ${bank.account_masked}`, owner: bank.owner, balance: bank.current_balance, active: bank.active, policy: bank.cross_funding_policy }])),
@@ -62,5 +63,5 @@ export default async function PlanPage() {
     selectedIpos: decisions.filter((decision) => decision.selected).map((decision) => ({ ipo: decision.ipo, mode: decision.mode })),
     capital,
   };
-  return <PlanScreen workspaceId={workspace.id} lookups={lookups} />;
+  return <PlanScreen workspaceId={workspace.id} canEdit={workspace.role !== "VIEWER"} lookups={lookups} />;
 }

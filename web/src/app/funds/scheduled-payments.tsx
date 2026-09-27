@@ -2,6 +2,8 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import { formatInr } from "@/lib/money";
+import { Drawer } from "@/components/drawer";
+import { EmptyState, StatusBadge } from "@/components/ui";
 
 export type ScheduledPayment = {
   id: string;
@@ -37,6 +39,7 @@ export default function ScheduledPayments({
   const [payments, setPayments] = useState(initialPayments);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
   const base = `/api/workspaces/${workspaceId}/banks/${bankId}/recurring-debits`;
@@ -50,6 +53,7 @@ export default function ScheduledPayments({
   }, [base]);
 
   function startEdit(payment: ScheduledPayment) {
+    setFormOpen(true);
     setEditingId(payment.id);
     setForm({
       name: payment.name,
@@ -81,6 +85,7 @@ export default function ScheduledPayments({
       setPayments(editingId ? payments.map((item) => item.id === payment.id ? payment : item) : [...payments, payment]);
       setEditingId(null);
       setForm(emptyForm);
+      setFormOpen(false);
       setMessage("Scheduled payment saved.");
     } catch {
       setMessage("Check the payment details and try again.");
@@ -125,12 +130,12 @@ export default function ScheduledPayments({
 
   return (
     <section className="scheduled-payments">
-      <h2>Scheduled Payments/EMI</h2>
-      {payments.length === 0 ? <p>No scheduled payments.</p> : (
+      {canEdit && <button type="button" className="button-secondary" onClick={() => { setEditingId(null); setForm(emptyForm); setFormOpen(true); }}>+ Add payment</button>}
+      {payments.length === 0 ? <EmptyState title="No scheduled payments." detail="Upcoming debits will appear here." /> : (
         <ul className="change-list">
           {payments.map((payment) => (
             <li key={payment.id}>
-              <span><strong>{payment.name}</strong><br /><small>{payment.frequency.toLowerCase()} · Next {payment.next_due_date} · {payment.active ? "Active" : "Paused"}</small></span>
+              <span><strong>{payment.name}</strong><br /><small>{payment.frequency.toLowerCase()} · Next {payment.next_due_date}</small> <StatusBadge tone={payment.active ? "positive" : "neutral"}>{payment.active ? "Active" : "Paused"}</StatusBadge></span>
               <span>{formatInr(payment.amount)}<br />
                 {canEdit && <span className="payment-buttons">
                   <button type="button" aria-label={`Edit ${payment.name}`} disabled={busy} onClick={() => startEdit(payment)}>Edit</button>
@@ -142,9 +147,8 @@ export default function ScheduledPayments({
           ))}
         </ul>
       )}
-      {canEdit && (
+      {canEdit && formOpen && <Drawer title={editingId ? "Edit scheduled payment" : "Add scheduled payment"} onClose={() => setFormOpen(false)}>
         <form onSubmit={save} className="sign-in-form add-investor-form">
-          <h3>{editingId ? "Edit scheduled payment" : "Add scheduled payment"}</h3>
           <label htmlFor="payment-name">Name</label>
           <input id="payment-name" required value={form.name} onChange={(event) => setForm({ ...form, name: event.target.value })} />
           <label htmlFor="payment-amount">Amount (₹)</label>
@@ -159,9 +163,9 @@ export default function ScheduledPayments({
           <label htmlFor="payment-end">End date (optional)</label>
           <input id="payment-end" type="date" value={form.end_date} onChange={(event) => setForm({ ...form, end_date: event.target.value })} />
           <button type="submit" disabled={busy}>{editingId ? "Save changes" : "Add scheduled payment"}</button>
-          {editingId && <button type="button" disabled={busy} onClick={() => { setEditingId(null); setForm(emptyForm); }}>Cancel edit</button>}
+          {editingId && <button type="button" className="button-secondary" disabled={busy} onClick={() => { setEditingId(null); setForm(emptyForm); setFormOpen(false); }}>Cancel edit</button>}
         </form>
-      )}
+      </Drawer>}
       {message && <p role="status">{message}</p>}
     </section>
   );
