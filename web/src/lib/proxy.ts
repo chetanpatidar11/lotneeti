@@ -30,6 +30,32 @@ export async function proxyWorkspaceRequest(
   }
 }
 
+export async function proxyWorkspaceUpload(
+  request: NextRequest,
+  path: string,
+): Promise<NextResponse> {
+  const url = backendUrl(path);
+  const csrfToken = request.cookies.get("csrftoken")?.value;
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        cookie: request.headers.get("cookie") ?? "",
+        origin: new URL(url).origin,
+        ...(csrfToken ? { "x-csrftoken": csrfToken } : {}),
+      },
+      body: await request.formData(),
+      cache: "no-store",
+    });
+    return new NextResponse(await response.text(), {
+      status: response.status,
+      headers: { "content-type": "application/json" },
+    });
+  } catch {
+    return NextResponse.json({ message: "Import is temporarily unavailable." }, { status: 503 });
+  }
+}
+
 export function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
 }

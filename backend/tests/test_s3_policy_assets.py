@@ -8,6 +8,10 @@ def test_beta_bucket_template_is_private_encrypted_and_scoped():
     resources = template["Resources"]
     for name in ("ExportBucket", "BackupBucket"):
         settings = resources[name]["Properties"]
+        assert settings["Tags"] == [
+            {"Key": "Project", "Value": "LotNeeti"},
+            {"Key": "Environment", "Value": "Beta"},
+        ]
         assert all(settings["PublicAccessBlockConfiguration"].values())
         assert (
             settings["BucketEncryption"]["ServerSideEncryptionConfiguration"][0][
@@ -28,3 +32,12 @@ def test_beta_bucket_template_is_private_encrypted_and_scoped():
     assert export_actions[0]["Resource"]["Fn::Sub"].endswith("/exports/*")
     assert backup_actions[0]["Resource"]["Fn::Sub"].endswith("/backups/postgres/*")
     assert "s3:DeleteObject" not in export_actions[0]["Action"]
+    role = resources["BetaInstanceRole"]["Properties"]
+    assert role["AssumeRolePolicyDocument"]["Statement"][0]["Principal"] == {
+        "Service": "ec2.amazonaws.com"
+    }
+    assert role["ManagedPolicyArns"] == [
+        {"Ref": "ExportAccessPolicy"},
+        {"Ref": "BackupAccessPolicy"},
+    ]
+    assert resources["BetaInstanceProfile"]["Properties"]["Roles"] == [{"Ref": "BetaInstanceRole"}]

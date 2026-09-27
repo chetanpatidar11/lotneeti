@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.db.models import Q
 
 
 class AuditEvent(models.Model):
@@ -48,3 +49,38 @@ class BetaEvent(models.Model):
 
     def __str__(self):
         return self.event_type
+
+
+class FeatureFlag(models.Model):
+    """A platform default with an optional workspace-specific override."""
+
+    id = models.BigAutoField(primary_key=True)
+    key = models.CharField(max_length=100)
+    workspace = models.ForeignKey(
+        "accounts.Workspace",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="feature_flags",
+    )
+    enabled = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["key"],
+                condition=Q(workspace__isnull=True),
+                name="unique_platform_feature_flag",
+            ),
+            models.UniqueConstraint(
+                fields=["key", "workspace"],
+                condition=Q(workspace__isnull=False),
+                name="unique_workspace_feature_flag",
+            ),
+        ]
+
+    def __str__(self):
+        scope = "platform" if self.workspace_id is None else str(self.workspace_id)
+        return f"{scope}:{self.key}={self.enabled}"

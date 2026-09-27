@@ -79,3 +79,28 @@ class DematAccount(models.Model):
     def client_id_masked(self) -> str:
         value = decrypt_value(self.client_id_ciphertext, purpose="demat")
         return f"••••{value[-4:]}"
+
+
+class AccountImportBatch(models.Model):
+    class Status(models.TextChoices):
+        PREVIEWED = "PREVIEWED", "Previewed"
+        CONFIRMED = "CONFIRMED", "Confirmed"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    workspace = models.ForeignKey(
+        "accounts.Workspace", on_delete=models.CASCADE, related_name="account_imports"
+    )
+    created_by = models.ForeignKey(
+        "accounts.User", on_delete=models.PROTECT, related_name="account_imports"
+    )
+    source_filename = models.CharField(max_length=255)
+    source_hash = models.CharField(max_length=64)
+    rows_ciphertext = models.TextField()
+    row_count = models.PositiveIntegerField(default=0)
+    error_count = models.PositiveIntegerField(default=0)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.PREVIEWED)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.source_filename} ({self.status})"

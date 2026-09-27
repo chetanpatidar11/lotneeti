@@ -46,7 +46,7 @@ Backend verification:
 ```bash
 .venv/bin/ruff check backend
 .venv/bin/ruff format --check backend
-.venv/bin/pytest backend
+.venv/bin/python -m pytest backend
 .venv/bin/python backend/manage.py check --settings=config.settings.test
 .venv/bin/python backend/manage.py makemigrations --check --dry-run --settings=config.settings.test
 ```

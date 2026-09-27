@@ -15,6 +15,7 @@ if [[ ! -f "$app_root/backend/manage.py" ]]; then
   echo "Missing LotNeeti checkout at $app_root" >&2
   exit 1
 fi
+cd "$app_root"
 
 set -a
 source "$app_env"

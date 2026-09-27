@@ -18,6 +18,10 @@
         "BucketName": {
           "Ref": "ExportBucketName"
         },
+        "Tags": [
+          {"Key": "Project", "Value": "LotNeeti"},
+          {"Key": "Environment", "Value": "Beta"}
+        ],
         "PublicAccessBlockConfiguration": {
           "BlockPublicAcls": true,
           "IgnorePublicAcls": true,
@@ -48,6 +52,10 @@
         "BucketName": {
           "Ref": "BackupBucketName"
         },
+        "Tags": [
+          {"Key": "Project", "Value": "LotNeeti"},
+          {"Key": "Environment", "Value": "Beta"}
+        ],
         "PublicAccessBlockConfiguration": {
           "BlockPublicAcls": true,
           "IgnorePublicAcls": true,
@@ -218,6 +226,35 @@
           ]
         }
       }
+    },
+    "BetaInstanceRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {"Service": "ec2.amazonaws.com"},
+              "Action": "sts:AssumeRole"
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          {"Ref": "ExportAccessPolicy"},
+          {"Ref": "BackupAccessPolicy"}
+        ],
+        "Tags": [
+          {"Key": "Project", "Value": "LotNeeti"},
+          {"Key": "Environment", "Value": "Beta"}
+        ]
+      }
+    },
+    "BetaInstanceProfile": {
+      "Type": "AWS::IAM::InstanceProfile",
+      "Properties": {
+        "Roles": [{"Ref": "BetaInstanceRole"}]
+      }
     }
   },
   "Outputs": {
@@ -240,6 +277,15 @@
       "Value": {
         "Ref": "BackupAccessPolicy"
       }
+    },
+    "InstanceProfileArn": {
+      "Value": {"Fn::GetAtt": ["BetaInstanceProfile", "Arn"]}
+    },
+    "InstanceProfileName": {
+      "Value": {"Ref": "BetaInstanceProfile"}
+    },
+    "InstanceRoleArn": {
+      "Value": {"Fn::GetAtt": ["BetaInstanceRole", "Arn"]}
     }
   }
 }

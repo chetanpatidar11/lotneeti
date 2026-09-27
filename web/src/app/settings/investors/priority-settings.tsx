@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import Link from "next/link";
 import { movePriority, sortByPriority } from "@/lib/priorities";
 import PreferredFunding, { type BankOption, type FundingPreference } from "./preferred-funding";
+import AccountImport from "./account-import";
 
 type Workspace = { id: string; name: string; role: string };
 type Investor = {
@@ -107,6 +108,7 @@ export default function PrioritySettings({
         ) : (
           <>
             <h2>{workspace.name}</h2>
+            <AccountImport workspaceId={workspace.id} canEdit={workspace.role !== "VIEWER"} />
             <ul className="investor-list">
               {investors.map((investor, index) => (
                 <li key={investor.id}>

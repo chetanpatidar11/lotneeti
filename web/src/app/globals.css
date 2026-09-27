@@ -82,6 +82,12 @@ button:disabled { opacity: .6; cursor: wait; }
 .preference-add label { display: grid; gap: .25rem; }
 .preference-add select { padding: .5rem; max-width: 100%; }
 .add-investor-form { border-top: 1px solid #dfe8df; padding-top: 1.5rem; }
+.account-import { margin: 1.5rem 0; padding: 1.25rem; border: 1px solid #dfe8df; border-radius: .75rem; background: #f8fbf7; }
+.account-import h2 { margin-top: 0; }
+.account-import p { line-height: 1.5; }
+.file-picker { display: inline-grid; gap: .4rem; font-weight: 600; }
+.file-picker input { padding: .6rem 0; font: inherit; }
+.account-import-table ul { margin: 0; padding-left: 1.1rem; color: #9b332d; }
 .settings-shell select { width: 100%; padding: .75rem; border: 1px solid #9bb1a2; border-radius: .5rem; background: #fff; font: inherit; }
 .balance-card { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: 1.25rem; background: #eef6ef; border-radius: .75rem; }
 .balance-card strong { font-size: 1.75rem; }
