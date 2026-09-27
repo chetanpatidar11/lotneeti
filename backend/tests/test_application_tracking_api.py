@@ -13,6 +13,16 @@ from funding.models import BalanceChange, BankAccount
 from planner.persistence import create_plan_run
 
 
+def assert_single_bank_capital(response, *, bank, balance, blocked, planned, available):
+    expected = {
+        "balance": balance,
+        "blocked": blocked,
+        "planned": planned,
+        "available": available,
+    }
+    assert response.data == {**expected, "by_bank": {str(bank.pk): expected}}
+
+
 @pytest.mark.django_db
 def test_submitted_then_blocked_updates_capital_without_changing_balance():
     owner, workspace, snapshot = setup_plan()
@@ -41,13 +51,15 @@ def test_submitted_then_blocked_updates_capital_without_changing_balance():
     assert blocked.status_code == 200
     assert blocked.data["blocked_at"] is not None
     assert client.post(blocked_url, {}, format="json").status_code == 409
-    totals = client.get(capital_url).data
-    assert totals == {
-        "balance": "50000.00",
-        "blocked": "15000.00",
-        "planned": "0.00",
-        "available": "35000.00",
-    }
+    bank = BankAccount.objects.get(workspace=workspace)
+    assert_single_bank_capital(
+        client.get(capital_url),
+        bank=bank,
+        balance="50000.00",
+        blocked="15000.00",
+        planned="0.00",
+        available="35000.00",
+    )
     assert BankAccount.objects.get(workspace=workspace).current_balance == Decimal("50000.00")
     assert AuditEvent.objects.filter(action="application.blocked", workspace=workspace).count() == 1
 
@@ -96,12 +108,14 @@ def test_not_allotted_releases_full_block_without_a_balance_change():
     assert result.data["status"] == "NOT_ALLOTTED"
     assert result.data["result_at"] is not None
     assert client.post(url, {}).status_code == 409
-    assert client.get(reverse("workspace-capital", args=[workspace.pk])).data == {
-        "balance": "50000.00",
-        "blocked": "0.00",
-        "planned": "0.00",
-        "available": "50000.00",
-    }
+    assert_single_bank_capital(
+        client.get(reverse("workspace-capital", args=[workspace.pk])),
+        bank=BankAccount.objects.get(workspace=workspace),
+        balance="50000.00",
+        blocked="0.00",
+        planned="0.00",
+        available="50000.00",
+    )
     assert BankAccount.objects.get(workspace=workspace).current_balance == Decimal("50000.00")
     assert (
         AuditEvent.objects.filter(action="application.not_allotted", workspace=workspace).count()
@@ -135,12 +149,14 @@ def test_full_allotment_debits_actual_cost_once_and_releases_entire_block():
         client.post(url, {"quantity": 150, "actual_cost": "14850.00"}, format="json").status_code
         == 409
     )
-    assert client.get(reverse("workspace-capital", args=[workspace.pk])).data == {
-        "balance": "35150.00",
-        "blocked": "0.00",
-        "planned": "0.00",
-        "available": "35150.00",
-    }
+    assert_single_bank_capital(
+        client.get(reverse("workspace-capital", args=[workspace.pk])),
+        bank=BankAccount.objects.get(workspace=workspace),
+        balance="35150.00",
+        blocked="0.00",
+        planned="0.00",
+        available="35150.00",
+    )
     change = BalanceChange.objects.get(operation=BalanceChange.Operation.ALLOTMENT)
     assert change.old_balance == Decimal("50000.00")
     assert change.delta == Decimal("-14850.00")
@@ -183,10 +199,12 @@ def test_partial_shni_allotment_releases_full_mandate_and_deducts_only_actual_co
     assert result.status_code == 200
     assert result.data["allotted_quantity"] == 420
     assert result.data["actual_cost"] == "42000.00"
-    assert client.get(reverse("workspace-capital", args=[workspace.pk])).data == {
-        "balance": "188000.00",
-        "blocked": "0.00",
-        "planned": "0.00",
-        "available": "188000.00",
-    }
+    assert_single_bank_capital(
+        client.get(reverse("workspace-capital", args=[workspace.pk])),
+        bank=bank,
+        balance="188000.00",
+        blocked="0.00",
+        planned="0.00",
+        available="188000.00",
+    )
     assert BalanceChange.objects.get(operation="ALLOTMENT").delta == Decimal("-42000.00")

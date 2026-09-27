@@ -83,6 +83,62 @@ class IPO(models.Model):
             raise ValidationError(errors)
 
 
+class IPOSourceLink(models.Model):
+    """Explicit association between one feed identity and a canonical IPO."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    ipo = models.ForeignKey(IPO, on_delete=models.PROTECT, related_name="source_links")
+    source_key = models.CharField(max_length=80)
+    source_record_id = models.CharField(max_length=160)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source_key", "source_record_id"], name="unique_ipo_feed_identity"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.source_key}:{self.source_record_id}"
+
+
+class IPOSourceSnapshot(models.Model):
+    """Immutable normalized source observation; it does not publish or merge itself."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    link = models.ForeignKey(IPOSourceLink, on_delete=models.PROTECT, related_name="snapshots")
+    payload = models.JSONField()
+    payload_hash = models.CharField(max_length=64)
+    observed_at = models.DateTimeField()
+    fetched_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-observed_at", "-fetched_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["link", "payload_hash", "observed_at"],
+                name="unique_ipo_feed_snapshot",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.link}: {self.observed_at}"
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("IPO source history cannot be changed")
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("IPO source history cannot be deleted")
+
+    def clean(self):
+        if self.observed_at is not None and timezone.is_naive(self.observed_at):
+            raise ValidationError({"observed_at": "Observation time must have a timezone."})
+
+
 class IPOContentVersion(models.Model):
     class ContentType(models.TextChoices):
         COMPANY = "COMPANY", "Company summary"

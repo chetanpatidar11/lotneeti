@@ -64,6 +64,8 @@ Conflict precedence: manual override / source priority / newest observation / ot
 Missing required IPO fields: ____
 Missing required GMP fields: ____
 Whether stale/conflicting data may feed selection: yes / no / only after manual APPLY
+GMP consensus: eligible sources ____, minimum count ____, aggregation ____, disagreement rule ____
+NSE/BSE/SEBI feed permission/schema/redistribution approval references: ____
 Decision owner and date: ____
 ```
 
