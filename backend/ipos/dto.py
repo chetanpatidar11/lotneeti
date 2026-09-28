@@ -35,6 +35,7 @@ class IPORecord:
     publication_state: str
     source_url: str
     source_observed_at: datetime
+    provided_fields: tuple[str, ...]
 
     @classmethod
     def from_mapping(
@@ -66,6 +67,7 @@ class IPORecord:
             publication_state=str(raw.get("publication_state") or "DRAFT"),
             source_url=str(raw.get("source_url") or ""),
             source_observed_at=observed_at.astimezone(UTC),
+            provided_fields=tuple(sorted(raw)),
         )
 
     def payload(self) -> dict[str, object]:
@@ -85,6 +87,7 @@ class IPORecord:
             "status": self.status,
             "publication_state": self.publication_state,
             "source_url": self.source_url,
+            "provided_fields": list(self.provided_fields),
         }
 
     @property
@@ -93,8 +96,10 @@ class IPORecord:
         return hashlib.sha256(encoded).hexdigest()
 
     def model_fields(self) -> dict[str, object]:
+        payload = self.payload()
+        payload.pop("provided_fields")
         return {
-            **self.payload(),
+            **payload,
             "lower_price": self.lower_price,
             "upper_price": self.upper_price,
             "open_date": self.open_date,

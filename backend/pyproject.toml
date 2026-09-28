@@ -9,6 +9,7 @@ description = "LotNeeti Django API and deterministic planning services"
 requires-python = ">=3.12"
 dependencies = [
   "boto3>=1.35,<2",
+  "certifi>=2026.7,<2027",
   "celery>=5.5,<5.6",
   "cryptography>=45,<47",
   "Django>=5.2,<5.3",
@@ -17,6 +18,7 @@ dependencies = [
   "psycopg[binary]>=3.2,<3.3",
   "pyotp>=2.9,<3",
   "python-dotenv>=1.1,<2",
+  "pypdf>=6,<7",
   "redis>=6,<7",
 ]
 

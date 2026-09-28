@@ -6,7 +6,7 @@ from rest_framework import serializers
 from ipos.content import published_summary
 from ipos.gmp_effective import effective_observation_value, resolve_gmp
 from ipos.models import IPO, GMPObservation
-from ipos.overrides import OVERRIDABLE_FIELDS, effective_ipo_values
+from ipos.overrides import OVERRIDABLE_FIELDS, effective_ipo_resolution, effective_ipo_values
 
 
 def gmp_percent(value: Decimal, upper_price: Decimal) -> Decimal:
@@ -61,6 +61,10 @@ class PublicIPOSerializer(serializers.ModelSerializer):
     current_gmp_percent = serializers.SerializerMethodField()
     current_gmp_observed_at = serializers.SerializerMethodField()
     gmp_source_count = serializers.SerializerMethodField()
+    gmp_minimum = serializers.SerializerMethodField()
+    gmp_maximum = serializers.SerializerMethodField()
+    gmp_median = serializers.SerializerMethodField()
+    gmp_latest_observed_at = serializers.SerializerMethodField()
     gmp_source_conflict = serializers.SerializerMethodField()
     gmp_stale_source_count = serializers.SerializerMethodField()
     gmp_data_state = serializers.SerializerMethodField()
@@ -76,6 +80,9 @@ class PublicIPOSerializer(serializers.ModelSerializer):
             "issuer_name",
             "symbol",
             "issue_type",
+            "source_market",
+            "listing_exchanges",
+            "designated_exchange",
             "lower_price",
             "upper_price",
             "lot_size",
@@ -88,6 +95,10 @@ class PublicIPOSerializer(serializers.ModelSerializer):
             "current_gmp_percent",
             "current_gmp_observed_at",
             "gmp_source_count",
+            "gmp_minimum",
+            "gmp_maximum",
+            "gmp_median",
+            "gmp_latest_observed_at",
             "gmp_source_conflict",
             "gmp_stale_source_count",
             "gmp_data_state",
@@ -108,10 +119,15 @@ class PublicIPOSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         result = super().to_representation(instance)
-        effective = effective_ipo_values(instance)
+        effective = self._ipo_resolution(instance).values
         for name in OVERRIDABLE_FIELDS.intersection(result):
             result[name] = self.fields[name].to_representation(effective[name])
         return result
+
+    def _ipo_resolution(self, obj):
+        if not hasattr(obj, "_ipo_resolution"):
+            obj._ipo_resolution = effective_ipo_resolution(obj)
+        return obj._ipo_resolution
 
     def _resolution(self, obj):
         if not hasattr(obj, "_gmp_resolution"):
@@ -136,6 +152,22 @@ class PublicIPOSerializer(serializers.ModelSerializer):
 
     def get_gmp_source_count(self, obj):
         return self._resolution(obj).source_count
+
+    def get_gmp_minimum(self, obj):
+        value = self._resolution(obj).minimum
+        return str(value) if value is not None else None
+
+    def get_gmp_maximum(self, obj):
+        value = self._resolution(obj).maximum
+        return str(value) if value is not None else None
+
+    def get_gmp_median(self, obj):
+        value = self._resolution(obj).median
+        return str(value) if value is not None else None
+
+    def get_gmp_latest_observed_at(self, obj):
+        value = self._resolution(obj).latest_observed_at
+        return value.isoformat() if value is not None else None
 
     def get_gmp_source_conflict(self, obj):
         return self._resolution(obj).source_conflict

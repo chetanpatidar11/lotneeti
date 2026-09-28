@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from uuid import UUID
 
@@ -28,11 +29,15 @@ from ipos.models import (
     GMPObservation,
     GMPProviderState,
     IPOContentVersion,
+    IPOFeedBatch,
+    IPOFeedObservation,
     IPOFieldOverride,
+    IPOProviderSyncState,
+    SEBIFiling,
 )
 from ipos.overrides import (
     OVERRIDABLE_FIELDS,
-    effective_ipo_values,
+    effective_ipo_resolution,
     resume_ipo_auto,
     set_ipo_override,
 )
@@ -41,6 +46,7 @@ from ipos.provider_health import (
     set_provider_enabled,
     set_provider_override,
 )
+from ipos.tasks import run_ipo_sync, sync_gmp_sources
 from planner.models import PlannerPolicy, PlanRun
 from planner.policies import platform_policy, set_policy
 from platform_admin.totp import verify_admin_code
@@ -54,6 +60,7 @@ class FounderAdminSite(AdminSite):
 
     def get_urls(self):
         return [
+            path("live-data/", self.admin_view(self.live_data), name="live-data"),
             path("ipo-exceptions/", self.admin_view(self.ipo_exceptions), name="ipo-exceptions"),
             path("gmp-policy/", self.admin_view(self.gmp_policy), name="gmp-policy"),
             path("gmp-providers/", self.admin_view(self.gmp_providers), name="gmp-providers"),
@@ -97,6 +104,45 @@ class FounderAdminSite(AdminSite):
             *super().get_urls(),
         ]
 
+    def live_data(self, request):
+        sync_result = None
+        if request.method == "POST":
+            action = request.POST.get("action")
+            if action in {"sync_all", "sync_nse", "sync_bse", "sync_documents", "sync_sebi"}:
+                sync_result = run_ipo_sync(provider=action.removeprefix("sync_"))
+            elif action == "sync_gmp":
+                sync_result = {"gmp": sync_gmp_sources()}
+            elif action in {"enable_sebi", "disable_sebi"}:
+                state, _ = IPOProviderSyncState.objects.get_or_create(source_key="sebi")
+                state.enabled = request.POST["action"] == "enable_sebi"
+                state.save(update_fields=["enabled"])
+                sync_result = {"status": "ENABLED" if state.enabled else "DISABLED"}
+            else:
+                sync_result = {
+                    "status": "UNAVAILABLE",
+                    "reason": "Provider access is not configured",
+                }
+        latest = SEBIFiling.objects.order_by("-fetched_at").first()
+        sebi_state, _ = IPOProviderSyncState.objects.get_or_create(source_key="sebi")
+        return render(
+            request,
+            "platform_admin/live_data.html",
+            {
+                "title": "Live data",
+                "sync_result": sync_result,
+                "latest": latest,
+                "sebi_state": sebi_state,
+                "nse_state": IPOProviderSyncState.objects.filter(source_key="nse").first(),
+                "bse_state": IPOProviderSyncState.objects.filter(source_key="bse").first(),
+                "filings": SEBIFiling.objects.all()[:25],
+                "published_count": IPO.objects.filter(publication_state="PUBLISHED").count(),
+                "gmp_states": GMPProviderState.objects.all(),
+                "gmp_count": GMPObservation.objects.count(),
+                "nse_batch_count": IPOFeedBatch.objects.filter(source_key="nse").count(),
+                "bse_batch_count": IPOFeedBatch.objects.filter(source_key="bse").count(),
+            },
+        )
+
     def gmp_policy(self, request):
         error = ""
         if request.method == "POST":
@@ -126,6 +172,7 @@ class FounderAdminSite(AdminSite):
             "issuer_name", "id"
         ):
             resolution = resolve_gmp(ipo, at=now)
+            ipo_resolution = effective_ipo_resolution(ipo)
             issues = []
             if resolution.effective is None:
                 issues.append("GMP stale" if resolution.stale_source_keys else "GMP missing")
@@ -133,6 +180,16 @@ class FounderAdminSite(AdminSite):
                 issues.append("Stale GMP source")
             if resolution.source_conflict:
                 issues.append("GMP source conflict")
+            if ipo_resolution.exchange_conflict_fields:
+                issues.append(
+                    "IPO source conflict: " + ", ".join(ipo_resolution.exchange_conflict_fields)
+                )
+            if ipo_resolution.document_disagreement_fields:
+                issues.append(
+                    "RHP value differs: " + ", ".join(ipo_resolution.document_disagreement_fields)
+                )
+            if ipo_resolution.validation_blocked:
+                issues.append("IPO source values need review")
             if issues:
                 rows.append({"ipo": ipo, "resolution": resolution, "issues": issues})
         return render(
@@ -385,7 +442,8 @@ class FounderAdminSite(AdminSite):
                     reverse("founder_admin:ipo-override-detail", args=[ipo.pk])
                 )
 
-        effective = effective_ipo_values(ipo)
+        ipo_resolution = effective_ipo_resolution(ipo)
+        effective = ipo_resolution.values
         active = {
             item.field_name: item
             for item in IPOFieldOverride.objects.filter(ipo=ipo, resumed_at__isnull=True)
@@ -397,6 +455,21 @@ class FounderAdminSite(AdminSite):
                 "name": name,
                 "label": IPO._meta.get_field(name).verbose_name,
                 "source": getattr(ipo, name),
+                "sources": [
+                    {"key": key, "value": value}
+                    for key, value in ipo_resolution.fields[name].source_values.items()
+                ]
+                if name in ipo_resolution.fields
+                else [],
+                "provenance": ipo_resolution.fields[name].provenance_source
+                if name in ipo_resolution.fields
+                else ipo.source_key,
+                "conflict": ipo_resolution.fields[name].exchange_conflict
+                if name in ipo_resolution.fields
+                else False,
+                "document_disagreement": ipo_resolution.fields[name].document_disagreement
+                if name in ipo_resolution.fields
+                else False,
                 "effective": effective[name],
                 "override": active.get(name),
             }
@@ -405,6 +478,17 @@ class FounderAdminSite(AdminSite):
         history = IPOFieldOverride.objects.filter(ipo=ipo).select_related(
             "created_by", "resumed_by"
         )
+        source_rows = []
+        for link in ipo.source_links.order_by("source_key", "source_record_id"):
+            snapshot = link.snapshots.first()
+            if snapshot is not None:
+                source_rows.append(
+                    {
+                        "link": link,
+                        "snapshot": snapshot,
+                        "payload": json.dumps(snapshot.payload, indent=2, sort_keys=True),
+                    }
+                )
         return render(
             request,
             "platform_admin/ipo_override_detail.html",
@@ -413,6 +497,7 @@ class FounderAdminSite(AdminSite):
                 "ipo": ipo,
                 "fields": fields,
                 "history": history,
+                "source_rows": source_rows,
                 "error": error,
             },
         )
@@ -563,6 +648,25 @@ class IPOAdmin(ReadOnlyModelAdmin):
     list_display = ("issuer_name", "status", "publication_state", "open_date", "close_date")
     list_filter = ("status", "publication_state", "issue_type")
     search_fields = ("issuer_name", "symbol", "source_record_id")
+
+
+@admin.register(IPOFeedObservation, site=founder_admin_site)
+class IPOFeedObservationAdmin(ReadOnlyModelAdmin):
+    list_display = ("source_key", "source_record_id", "observed_at", "fetched_at")
+    list_filter = ("source_key", "observed_at")
+    search_fields = ("source_record_id",)
+
+
+@admin.register(IPOFeedBatch, site=founder_admin_site)
+class IPOFeedBatchAdmin(ReadOnlyModelAdmin):
+    list_display = ("source_key", "observed_at", "fetched_at", "payload_hash")
+    list_filter = ("source_key", "observed_at")
+
+
+@admin.register(SEBIFiling, site=founder_admin_site)
+class SEBIFilingAdmin(ReadOnlyModelAdmin):
+    list_display = ("issuer_name", "document_type", "filing_date", "review_state", "fetched_at")
+    search_fields = ("issuer_name", "document_type")
 
 
 @admin.register(GMPObservation, site=founder_admin_site)

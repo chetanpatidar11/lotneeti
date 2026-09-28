@@ -31,6 +31,9 @@ class IPO(models.Model):
     issuer_name = models.CharField(max_length=200)
     symbol = models.CharField(max_length=40, blank=True)
     issue_type = models.CharField(max_length=9, choices=IssueType.choices)
+    source_market = models.CharField(max_length=16, blank=True)
+    listing_exchanges = models.CharField(max_length=7, blank=True)
+    designated_exchange = models.CharField(max_length=3, blank=True)
     lower_price = models.DecimalField(
         max_digits=10, decimal_places=2, validators=[MinValueValidator(Decimal("0.01"))]
     )
@@ -90,6 +93,12 @@ class IPOSourceLink(models.Model):
     ipo = models.ForeignKey(IPO, on_delete=models.PROTECT, related_name="source_links")
     source_key = models.CharField(max_length=80)
     source_record_id = models.CharField(max_length=160)
+    canonical_enabled = models.BooleanField(default=False)
+    rights_reference = models.CharField(max_length=250, blank=True)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.PROTECT
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -137,6 +146,167 @@ class IPOSourceSnapshot(models.Model):
     def clean(self):
         if self.observed_at is not None and timezone.is_naive(self.observed_at):
             raise ValidationError({"observed_at": "Observation time must have a timezone."})
+
+
+class IPOFeedBatch(models.Model):
+    """One complete source response, including an empty current-issue list."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    source_key = models.CharField(max_length=20)
+    source_url = models.URLField()
+    payload_hash = models.CharField(max_length=64)
+    row_keys = models.JSONField(blank=True)
+    observed_at = models.DateTimeField()
+    fetched_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        ordering = ["-observed_at", "-fetched_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source_key", "payload_hash", "observed_at"],
+                name="unique_ipo_feed_batch",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.source_key} batch at {self.observed_at}"
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("IPO feed batches cannot be changed")
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("IPO feed batches cannot be deleted")
+
+
+class IPOFeedObservation(models.Model):
+    """Immutable exchange list row, even when planning facts are incomplete."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    source_key = models.CharField(max_length=20)
+    source_record_id = models.CharField(max_length=160)
+    source_url = models.URLField()
+    raw_payload = models.JSONField()
+    normalized_payload = models.JSONField()
+    payload_hash = models.CharField(max_length=64)
+    observed_at = models.DateTimeField()
+    fetched_at = models.DateTimeField(default=timezone.now)
+    source_updated_at = models.DateTimeField(null=True, blank=True)
+    snapshot_created_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-observed_at", "-fetched_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source_key", "source_record_id", "payload_hash", "observed_at"],
+                name="unique_ipo_feed_observation",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.source_key}:{self.source_record_id} at {self.observed_at}"
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("IPO feed observations cannot be changed")
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("IPO feed observations cannot be deleted")
+
+    def clean(self):
+        if self.source_key not in {"nse", "bse"}:
+            raise ValidationError({"source_key": "Unsupported exchange source"})
+        if self.observed_at is not None and timezone.is_naive(self.observed_at):
+            raise ValidationError({"observed_at": "Observation time must have a timezone."})
+
+
+class IPOEnrichmentObservation(models.Model):
+    """Immutable issue-detail or official-document extraction for a discovered symbol."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    source_key = models.CharField(max_length=20)
+    stage = models.CharField(max_length=20)
+    symbol = models.CharField(max_length=40)
+    source_url = models.URLField(max_length=500)
+    payload_hash = models.CharField(max_length=64)
+    normalizer_version = models.PositiveSmallIntegerField(default=1)
+    normalized_payload = models.JSONField(default=dict)
+    source_updated_at = models.DateTimeField(null=True, blank=True)
+    fetched_at = models.DateTimeField()
+    snapshot_created_at = models.DateTimeField(auto_now_add=True)
+    outcome = models.CharField(max_length=20, default="OK")
+    safe_error = models.CharField(max_length=80, blank=True)
+
+    class Meta:
+        ordering = ["-fetched_at", "-snapshot_created_at", "-id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source_key", "stage", "symbol", "payload_hash", "normalizer_version"],
+                name="unique_ipo_enrichment_payload",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.source_key}:{self.stage}:{self.symbol}"
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("IPO enrichment observations cannot be changed")
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("IPO enrichment observations cannot be deleted")
+
+    def clean(self):
+        if self.source_key not in {"nse", "bse", "sebi"}:
+            raise ValidationError({"source_key": "Unsupported official source"})
+        if self.stage not in {"DETAIL", "DOCUMENT"}:
+            raise ValidationError({"stage": "Unsupported enrichment stage"})
+        if self.outcome not in {"OK", "ERROR"}:
+            raise ValidationError({"outcome": "Unsupported enrichment outcome"})
+        if self.source_updated_at and timezone.is_naive(self.source_updated_at):
+            raise ValidationError({"source_updated_at": "Timezone is required"})
+        if self.fetched_at and timezone.is_naive(self.fetched_at):
+            raise ValidationError({"fetched_at": "Timezone is required"})
+
+
+class SEBIFiling(models.Model):
+    """Official filing metadata awaiting deterministic fact extraction or review."""
+
+    source_url = models.URLField(unique=True)
+    issuer_name = models.CharField(max_length=200)
+    document_type = models.CharField(max_length=40)
+    document_url = models.URLField(blank=True)
+    filing_date = models.DateField()
+    fetched_at = models.DateTimeField(default=timezone.now)
+    review_state = models.CharField(max_length=20, default="REVIEW_REQUIRED")
+
+    class Meta:
+        ordering = ["-filing_date", "issuer_name"]
+
+    def __str__(self):
+        return f"{self.issuer_name}: {self.document_type}"
+
+
+class IPOProviderSyncState(models.Model):
+    """Persistent, safe operational status for an official IPO source."""
+
+    source_key = models.CharField(max_length=40, unique=True)
+    enabled = models.BooleanField(default=True)
+    last_attempt_at = models.DateTimeField(null=True, blank=True)
+    last_success_at = models.DateTimeField(null=True, blank=True)
+    fetched_count = models.PositiveIntegerField(default=0)
+    updated_count = models.PositiveIntegerField(default=0)
+    last_status = models.CharField(max_length=40, blank=True)
+    last_safe_error = models.CharField(max_length=120, blank=True)
+
+    def __str__(self):
+        return self.source_key
 
 
 class IPOContentVersion(models.Model):

@@ -59,6 +59,10 @@ def test_median_uses_one_latest_fresh_enabled_observation_per_source_and_keeps_h
     result = resolve_gmp(ipo, at=now)
     assert result.effective.value_per_share == Decimal("12.50")
     assert result.source_count == 2
+    assert result.minimum == Decimal("10.00")
+    assert result.maximum == Decimal("15.00")
+    assert result.median == Decimal("12.50")
+    assert result.latest_observed_at == first.observed_at
     assert result.source_conflict is True
     assert result.stale_source_keys == ("stale",)
     assert {item.pk for item in result.fresh_observations} == {first.pk, second.pk}
@@ -70,6 +74,9 @@ def test_median_uses_one_latest_fresh_enabled_observation_per_source_and_keeps_h
     public = api.get(reverse("ipo-detail", args=[ipo.pk]))
     assert public.data["current_gmp"] == "12.50"
     assert public.data["gmp_source_count"] == 2
+    assert public.data["gmp_minimum"] == "10.00"
+    assert public.data["gmp_maximum"] == "15.00"
+    assert public.data["gmp_median"] == "12.50"
     assert public.data["gmp_source_conflict"] is True
     assert public.data["gmp_stale_source_count"] == 1
     history = api.get(reverse("ipo-gmp-history", args=[ipo.pk])).data

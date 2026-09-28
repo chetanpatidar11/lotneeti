@@ -123,5 +123,13 @@ CELERY_BEAT_SCHEDULE = {
     "post-due-recurring-debits": {
         "task": "funding.tasks.run_due_recurring_debits",
         "schedule": crontab(hour=0, minute=5),
-    }
+    },
+    "sync-daily-ipo-data": {
+        "task": "ipos.tasks.sync_daily_ipo_data",
+        "schedule": crontab(hour=0, minute=0),
+    },
+    "sync-gmp": {
+        "task": "ipos.tasks.sync_gmp_sources",
+        "schedule": crontab(minute="*/15"),
+    },
 }

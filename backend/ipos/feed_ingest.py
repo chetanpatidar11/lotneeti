@@ -9,7 +9,9 @@ from datetime import datetime
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
+from django.utils import timezone
 
+from core.audit import record_event
 from ipos.dto import IPORecord
 from ipos.models import IPO, IPOSourceLink, IPOSourceSnapshot
 
@@ -60,3 +62,34 @@ def record_exchange_snapshot(*, ipo: IPO, record: IPORecord) -> IPOSourceSnapsho
         defaults={"payload": record.payload()},
     )
     return snapshot
+
+
+@transaction.atomic
+def set_canonical_source_enabled(
+    *, link: IPOSourceLink, enabled: bool, rights_reference: str, actor
+) -> IPOSourceLink:
+    """Explicitly gate reuse of a linked feed in effective IPO facts."""
+
+    if not actor.is_staff or not actor.is_founder_admin:
+        raise ValidationError("Founder access is required")
+    reference = rights_reference.strip()
+    if enabled and not reference:
+        raise ValidationError("Documented source-use permission is required")
+    if len(reference) > 250:
+        raise ValidationError("Permission reference is too long")
+    locked = IPOSourceLink.objects.select_for_update().get(pk=link.pk)
+    locked.canonical_enabled = enabled
+    if enabled:
+        locked.rights_reference = reference
+        locked.approved_by = actor
+        locked.approved_at = timezone.now()
+    locked.save(
+        update_fields=["canonical_enabled", "rights_reference", "approved_by", "approved_at"]
+    )
+    record_event(
+        action="ipo.source_canonical_enabled" if enabled else "ipo.source_canonical_disabled",
+        target=locked,
+        actor=actor,
+        metadata={"source_key": locked.source_key, "source_record_id": locked.source_record_id},
+    )
+    return locked

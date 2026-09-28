@@ -1,6 +1,7 @@
 from django.urls import path
 
 from investors.import_views import AccountImportListView, AccountImportPreviewView
+from investors.settings_views import SettingsItemsView
 from investors.views import DematAccountViewSet, InvestorViewSet
 
 investor_list = InvestorViewSet.as_view({"get": "list", "post": "create"})
@@ -13,6 +14,11 @@ demat_detail = DematAccountViewSet.as_view(
 )
 
 urlpatterns = [
+    path(
+        "workspaces/<uuid:workspace_id>/settings/items/",
+        SettingsItemsView.as_view(),
+        name="settings-items",
+    ),
     path(
         "workspaces/<uuid:workspace_id>/account-imports/",
         AccountImportListView.as_view(),

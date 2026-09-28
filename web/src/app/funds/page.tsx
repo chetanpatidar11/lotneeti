@@ -6,7 +6,7 @@ import FundsScreen from "./funds-screen";
 import type { ScheduledPayment } from "./scheduled-payments";
 
 type Workspace = { id: string; name: string; role: string };
-type Investor = { id: string; name: string };
+type Investor = { id: string; name: string; active: boolean };
 type Bank = {
   id: string;
   owner: string;
@@ -43,8 +43,9 @@ export default async function FundsPage() {
     getData(`workspaces/${workspace.id}/investors/`, cookieHeader),
     getData(`workspaces/${workspace.id}/capital/`, cookieHeader),
   ]);
-  const banks = banksResponse.ok ? ((await banksResponse.json()) as Bank[]) : [];
-  const investors = investorsResponse.ok ? ((await investorsResponse.json()) as Investor[]) : [];
+  const allBanks = banksResponse.ok ? ((await banksResponse.json()) as Bank[]) : [];
+  const investors = investorsResponse.ok ? ((await investorsResponse.json()) as Investor[]).filter((item) => item.active) : [];
+  const banks = allBanks.filter((bank) => bank.active && investors.some((investor) => investor.id === bank.owner));
   const capital = capitalResponse.ok ? (await capitalResponse.json()) as { by_bank?: Record<string, CapitalLine> } : null;
   let changes: Change[] = [];
   let payments: ScheduledPayment[] = [];

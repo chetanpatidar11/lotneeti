@@ -112,7 +112,10 @@ button:disabled { opacity: .48; cursor: not-allowed; transform: none; }
 .button-secondary, .balance-actions button[aria-pressed="false"], .ipo-choice-buttons button[aria-pressed="false"], .order-buttons button, .payment-buttons button, .plan-table button { border-color: var(--border-strong); background: var(--surface-soft); color: var(--text); }
 .button-secondary:hover:not(:disabled), .balance-actions button[aria-pressed="false"]:hover, .ipo-choice-buttons button[aria-pressed="false"]:hover, .order-buttons button:hover:not(:disabled), .payment-buttons button:hover:not(:disabled), .plan-table button:hover:not(:disabled) { background: var(--surface-hover); }
 .button-danger { border-color: #a44949; background: #643334; color: #fff; }
+.button-danger:hover:not(:disabled) { border-color: #cf6663; background: #854041; }
 .button-ghost { border-color: transparent; background: transparent; color: var(--muted); }
+.button-ghost-danger { border-color: transparent; background: transparent; color: #f19795; }
+.button-ghost-danger:hover:not(:disabled) { border-color: #734242; background: #3a2425; color: #fff; }
 .button-link { margin: 0; }
 input, select, textarea { min-width: 0; min-height: 36px; padding: 7px 10px; border: 1px solid var(--border-strong); border-radius: 7px; background: #11191b; color: var(--text); font: inherit; }
 input::placeholder { color: var(--faint); }
@@ -126,6 +129,10 @@ input[type="file"] { max-width: 100%; border: 1px dashed var(--border-strong); b
 input[type="checkbox"] { min-height: auto; accent-color: var(--accent); }
 .app-drawer { position: fixed; inset: 0 0 0 auto; width: min(100%, 420px); height: 100%; max-height: 100%; margin: 0; padding: 0; border: 0; border-left: 1px solid var(--border-strong); background: var(--surface); color: var(--text); box-shadow: var(--shadow); }
 .app-drawer::backdrop { background: rgba(3, 8, 9, .7); }
+.confirmation-dialog { width: min(calc(100% - 30px), 440px); max-height: calc(100vh - 30px); padding: 22px; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface-raised); color: var(--text); box-shadow: var(--shadow); }
+.confirmation-dialog::backdrop { background: rgba(3, 8, 9, .76); }
+.confirmation-dialog p { margin: 10px 0 20px; color: var(--muted); font-size: 13px; }
+.confirmation-actions { display: flex; justify-content: flex-end; gap: 8px; }
 .drawer-head { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 16px 18px; border-bottom: 1px solid var(--border); background: var(--surface); }
 .drawer-head button { font-size: 22px; }
 .drawer-body { padding: 18px; }
@@ -157,6 +164,15 @@ input[type="checkbox"] { min-height: auto; accent-color: var(--accent); }
 .compact-table .positive-cell { color: var(--positive); font-weight: 800; }
 
 .ipo-list { display: grid; gap: 9px; }
+.ipo-watch { margin-top: 22px; }
+.ipo-watch-list { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+.ipo-watch-row { display: grid; grid-template-columns: minmax(200px, 2fr) minmax(130px, 1fr) minmax(170px, 1.2fr) minmax(210px, 1.3fr); align-items: center; gap: 12px; padding: 11px 14px; border-bottom: 1px solid var(--border); }
+.ipo-watch-row:last-child { border-bottom: 0; }
+.ipo-watch-row strong, .ipo-watch-row small, .ipo-watch-issuer span { display: block; }
+.ipo-watch-row strong { font-size: 12px; }
+.ipo-watch-row small, .ipo-watch-issuer span { color: var(--muted); font-size: 11px; }
+.ipo-watch-issuer span { margin-top: 3px; }
+.ipo-watch-state { display: grid; justify-items: start; gap: 3px; }
 .ipo-card { padding: 16px; }
 .ipo-head { align-items: flex-start; }
 .ipo-card h2 { color: var(--text); font-size: 16px; }
@@ -280,6 +296,11 @@ input[type="checkbox"] { min-height: auto; accent-color: var(--accent); }
 .settings-tab:hover:not(:disabled) { background: var(--surface-raised); }
 .settings-tab.active { border-color: #2b6e50; background: var(--accent-deep); color: var(--accent); }
 .settings-section-actions { display: flex; gap: 7px; flex-wrap: wrap; }
+.settings-view-controls { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 13px; }
+.settings-view-controls p { margin: 0; color: var(--muted); font-size: 11px; }
+.settings-view-controls button { flex: 0 0 auto; }
+.settings-account-group { margin-top: 14px; }
+.settings-account-group .section-heading { margin-top: 19px; }
 .settings-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
 .settings-table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .settings-table th, .settings-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
@@ -288,6 +309,10 @@ input[type="checkbox"] { min-height: auto; accent-color: var(--accent); }
 .settings-table tbody tr:last-child th, .settings-table tbody tr:last-child td { border-bottom: 0; }
 .settings-table tbody th { font-weight: 750; color: var(--text); }
 .settings-table button { min-height: 31px; padding: 5px 9px; }
+.settings-table .settings-select-cell { width: 52px; min-width: 52px; padding: 3px 4px; text-align: center; }
+.settings-select-cell label { display: flex !important; align-items: center; justify-content: center; width: 44px; min-height: 44px; margin: auto; cursor: pointer; }
+.settings-select-cell input { width: 18px; height: 18px; min-height: 18px; padding: 0; margin: 0; }
+.settings-row-actions { display: flex; gap: 4px; }
 .settings-priority, .settings-order { display: inline-flex; align-items: center; gap: 4px; }
 .settings-priority input { width: 53px; text-align: center; font-variant-numeric: tabular-nums; }
 .settings-order button { width: 27px; padding: 3px; font-size: 16px; }
@@ -298,6 +323,7 @@ input[type="checkbox"] { min-height: auto; accent-color: var(--accent); }
 .settings-funding-row strong, .settings-funding-row small { display: block; }
 .settings-funding-row small, .settings-funding-row > span:nth-child(2) { color: var(--muted); font-size: 11px; }
 .settings-account-links { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.settings-account-group + .settings-account-links { margin-top: 22px; }
 .settings-account-links a, .settings-account-links button { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; min-height: 56px; padding: 12px 15px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); font-size: 13px; font-weight: 750; text-align: left; text-decoration: none; }
 .settings-account-links a:hover, .settings-account-links button:hover:not(:disabled) { border-color: var(--accent); background: var(--surface-hover); color: var(--text); }
 .settings-account-links span { color: var(--muted); font-size: 11px; font-weight: 550; }
@@ -310,6 +336,7 @@ input[type="checkbox"] { min-height: auto; accent-color: var(--accent); }
 .settings-linked p { margin: 0; padding: 6px 0; border-bottom: 1px solid var(--border); color: var(--text); font-size: 12px; }
 .settings-linked small { color: var(--muted); }
 .settings-message { margin: 15px 0 0; color: var(--positive); }
+.settings-message.error { color: #f19795; }
 .drawer-body .preferred-funding { padding: 0; border: 0; }
 .drawer-body .preference-list li { display: grid; gap: 7px; margin: 7px 0; padding: 10px; border: 1px solid var(--border); border-radius: 7px; }
 .drawer-body .preference-list li > span { color: var(--text); font-weight: 700; }
@@ -387,6 +414,7 @@ input[type="checkbox"] { min-height: auto; accent-color: var(--accent); }
 
 @media (max-width: 1250px) {
   .ipo-facts { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .ipo-watch-row { grid-template-columns: minmax(180px, 1.5fr) minmax(120px, 1fr); }
   .operations-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sale-form { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .sale-form h2 { grid-column: 1 / -1; }
@@ -403,6 +431,7 @@ input[type="checkbox"] { min-height: auto; accent-color: var(--accent); }
   .profit-line { overflow-x: auto; }
 }
 @media (max-width: 768px) {
+  :is(button, .button-link, .filter-chip, .mobile-overflow a, .sources-disclosure summary, input:not([type="checkbox"]):not([type="radio"]), select, textarea) { min-height: 44px; }
   .app-layout { display: block; }
   .app-sidebar { display: none; }
   .mobile-header { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; height: 52px; padding: 0 15px; border-bottom: 1px solid var(--border); background: #10181a; }
@@ -428,6 +457,8 @@ input[type="checkbox"] { min-height: auto; accent-color: var(--accent); }
   .plan-table td { display: table-cell; padding: 7px 8px; text-align: left; }
   .plan-table td::before { display: none; }
   .ipo-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .ipo-facts > div:last-child { grid-column: 1 / -1; }
+  .ipo-watch-row { grid-template-columns: 1fr 1fr; }
   .ipo-controls { display: block; }
   .application-card { display: block; }
   .application-table-wrap { overflow: visible; border: 0; background: transparent; }
@@ -452,10 +483,15 @@ input[type="checkbox"] { min-height: auto; accent-color: var(--accent); }
   .settings-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
   .settings-table tr { margin-bottom: 9px; padding: 5px 11px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
   .settings-table th, .settings-table td { display: grid; grid-template-columns: 90px minmax(0, 1fr); align-items: center; gap: 8px; padding: 7px 0; white-space: normal; }
+  .settings-table .settings-select-cell { display: flex; align-items: center; justify-content: flex-start; width: 100%; min-width: 0; padding: 3px 0; }
+  .settings-table .settings-select-cell::before { width: 90px; }
+  .settings-select-cell label { margin: 0; }
+  .settings-row-actions { display: flex !important; }
   .settings-table th::before, .settings-table td::before { content: attr(data-label); color: var(--faint); font-size: 10px; font-weight: 800; text-transform: uppercase; }
   .settings-table td:last-child { border-bottom: 0; }
   .settings-table button { min-height: 44px; }
   .settings-account-links { grid-template-columns: 1fr; }
+  .settings-view-controls { align-items: flex-start; flex-direction: column; }
   .settings-funding-row { grid-template-columns: minmax(110px, 1fr) minmax(100px, 1fr) 14px; }
   .settings-tab { min-height: 44px; }
 }

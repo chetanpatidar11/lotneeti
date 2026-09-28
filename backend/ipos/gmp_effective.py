@@ -51,6 +51,23 @@ class GMPResolution:
     def source_count(self) -> int:
         return len(self.fresh_observations)
 
+    @property
+    def minimum(self) -> Decimal | None:
+        return min((item.value_per_share for item in self.fresh_observations), default=None)
+
+    @property
+    def maximum(self) -> Decimal | None:
+        return max((item.value_per_share for item in self.fresh_observations), default=None)
+
+    @property
+    def median(self) -> Decimal | None:
+        values = [item.value_per_share for item in self.fresh_observations]
+        return median(values) if values else None
+
+    @property
+    def latest_observed_at(self):
+        return max((item.observed_at for item in self.fresh_observations), default=None)
+
 
 def effective_observation_value(observation: GMPObservation, *, at=None):
     now = at or timezone.now()

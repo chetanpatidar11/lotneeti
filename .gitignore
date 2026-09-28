@@ -11,6 +11,9 @@ __pycache__/
 htmlcov/
 *.sqlite3
 
+# Founder-supplied account workbook; keep identifiers outside Git.
+docs/DematAccounts_testing.xlsx
+
 node_modules/
 .next/
 out/

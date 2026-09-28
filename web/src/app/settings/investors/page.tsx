@@ -14,7 +14,7 @@ type Investor = {
   active: boolean;
 };
 type Demat = { id: string; depository: string; dp_id_masked: string; client_id_masked: string; broker: string; active: boolean };
-type Upi = { id: string; holder: string; handle_masked: string; active: boolean; verified: boolean };
+type Upi = { id: string; holder: string; bank_id: string; handle_masked: string; active: boolean; verified: boolean };
 type LinkedAccounts = Record<string, { demats: Demat[]; upis: Upi[] }>;
 
 async function getData(path: string, cookieHeader: string) {
@@ -61,11 +61,15 @@ export default async function InvestorSettingsPage() {
     }
     const upiLoads = await Promise.all(banks.map(async (bank) => {
       const response = await getData(`workspaces/${workspace.id}/banks/${bank.id}/upis/`, cookieHeader);
-      return { owner: bank.owner, ok: response.ok, upis: response.ok ? (await response.json()) as Upi[] : [] };
+      return { bankId: bank.id, ok: response.ok, upis: response.ok ? (await response.json()) as Upi[] : [] };
     }));
     for (const result of upiLoads) {
       if (!result.ok) loadError = true;
-      if (linkedAccounts[result.owner]) linkedAccounts[result.owner].upis.push(...result.upis);
+      for (const upi of result.upis) {
+        if (linkedAccounts[upi.holder]) {
+          linkedAccounts[upi.holder].upis.push({ ...upi, bank_id: result.bankId });
+        }
+      }
     }
   }
 

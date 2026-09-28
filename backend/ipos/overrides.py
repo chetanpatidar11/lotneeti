@@ -1,6 +1,7 @@
 """Audited IPO field corrections layered over immutable provider/source values."""
 
 from copy import copy
+from dataclasses import replace
 
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -9,6 +10,7 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from core.audit import record_event
+from ipos.canonical import CanonicalIPOResolution, resolve_canonical_ipo
 from ipos.models import IPO, IPOFieldOverride
 
 OVERRIDABLE_FIELDS = frozenset(
@@ -29,14 +31,55 @@ OVERRIDABLE_FIELDS = frozenset(
 )
 
 
-def effective_ipo_values(ipo: IPO) -> dict:
-    values = {name: getattr(ipo, name) for name in OVERRIDABLE_FIELDS}
+def effective_ipo_resolution(ipo: IPO) -> CanonicalIPOResolution:
+    canonical = resolve_canonical_ipo(ipo)
+    values = {**canonical.values, "publication_state": ipo.publication_state}
+    fields = dict(canonical.fields)
     for override in ipo.field_overrides.filter(resumed_at__isnull=True):
         field = IPO._meta.get_field(override.field_name)
         values[override.field_name] = field.to_python(
             None if override.value == "" and field.null else override.value
         )
-    return values
+        if override.field_name in fields:
+            fields[override.field_name] = replace(
+                fields[override.field_name],
+                value=values[override.field_name],
+                selected_source="manual",
+                provenance_source="manual",
+            )
+    candidate = copy(ipo)
+    for name, value in values.items():
+        setattr(candidate, name, value)
+    try:
+        candidate.clean()
+    except ValidationError:
+        # A later feed update cannot make a previously valid manual correction
+        # break the published IPO or the planner. Keep cached facts instead.
+        values = {name: getattr(ipo, name) for name in OVERRIDABLE_FIELDS}
+        fields = {
+            name: replace(
+                item, value=values[name], selected_source="cached", provenance_source="cached"
+            )
+            for name, item in fields.items()
+        }
+        for override in ipo.field_overrides.filter(resumed_at__isnull=True):
+            field = IPO._meta.get_field(override.field_name)
+            values[override.field_name] = field.to_python(
+                None if override.value == "" and field.null else override.value
+            )
+            if override.field_name in fields:
+                fields[override.field_name] = replace(
+                    fields[override.field_name],
+                    value=values[override.field_name],
+                    selected_source="manual",
+                    provenance_source="manual",
+                )
+        return CanonicalIPOResolution(values, fields, validation_blocked=True)
+    return CanonicalIPOResolution(values, fields, canonical.validation_blocked)
+
+
+def effective_ipo_values(ipo: IPO) -> dict:
+    return effective_ipo_resolution(ipo).values
 
 
 def published_ipos():
@@ -101,7 +144,9 @@ def resume_ipo_auto(*, ipo: IPO, field_name: str, actor) -> None:
     if override is None:
         raise ValidationError("This IPO field is already automatic")
     values = effective_ipo_values(locked)
-    values[field_name] = getattr(locked, field_name)
+    values[field_name] = resolve_canonical_ipo(locked).values.get(
+        field_name, getattr(locked, field_name)
+    )
     _validate_effective(locked, values)
     override.resumed_at = timezone.now()
     override.resumed_by = actor

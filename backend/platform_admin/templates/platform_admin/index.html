@@ -6,9 +6,12 @@
   <h1>Founder operations</h1>
   <div class="staff-groups">
     <div class="staff-group"><h2>IPO Data</h2><ul>
+      <li><a href="{% url 'founder_admin:live-data' %}">Live data</a></li>
       <li><a href="{% url 'founder_admin:ipos_ipo_changelist' %}">IPO master</a></li>
       <li><a href="{% url 'founder_admin:ipo-overrides' %}">Field corrections</a></li>
       <li><a href="{% url 'founder_admin:ipo-exceptions' %}">Data exceptions</a></li>
+      <li><a href="{% url 'founder_admin:ipos_ipofeedbatch_changelist' %}">Exchange imports</a></li>
+      <li><a href="{% url 'founder_admin:ipos_ipofeedobservation_changelist' %}">Exchange history</a></li>
     </ul></div>
     <div class="staff-group"><h2>GMP &amp; Providers</h2><ul>
       <li><a href="{% url 'founder_admin:gmp-providers' %}">Provider health</a></li>
