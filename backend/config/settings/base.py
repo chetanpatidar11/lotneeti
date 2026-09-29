@@ -130,6 +130,6 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-gmp": {
         "task": "ipos.tasks.sync_gmp_sources",
-        "schedule": crontab(minute="*/15"),
+        "schedule": crontab(hour=9, minute=0),
     },
 }

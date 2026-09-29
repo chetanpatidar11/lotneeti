@@ -1,5 +1,11 @@
 # LotNeeti execution status
 
+## D04/D06 permissioned daily InvestorGain GMP — local, 2026-09-29
+
+- The Founder confirmed written permission for the InvestorGain GMP endpoint. The agreement remains private and is not copied into Git. `sync_gmp_sources` now makes one transparent HTTPS request at **09:00 Asia/Kolkata**; it does not send browser-client-hint headers or run on member requests. It stores only value, IPO/source identity, source detail URL, source update time when supplied, fetch time and a payload hash. InvestorGain remains an **unofficial GMP source**, never a source of canonical IPO facts.
+- A first local run against the isolated preview matched and stored fresh GMP observations for **nine** current canonical IPOs: A-One Steels ₹28, AceVector ₹2, Bench Mark Infotech Services ₹29, German Green Steel ₹24.50, Moneyview ₹12.75, Orient Cables ₹72, Runwal Enterprises ₹14, Shah Investor's Home ₹14 and SRIT India ₹33. GREENASIA and HIMALAYAN matched the source list but reported no GMP, so no ₹0 placeholder was stored. The existing 24-hour freshness, 5-point conflict threshold, founder correction, manual Apply/Skip precedence and planner selection behavior apply unchanged.
+- Focused schedule/provider/consensus/health tests passed: **15 tests**. The full `bash scripts/check.sh` gate passed: **347 backend tests, 27 frontend tests and one Android test**, Planner matrix **115/115 P0 and 5/5 P1**, Ruff, Django/migration checks, web lint/typecheck/build and Capacitor sync. `git diff --check` passed. This is local only; AWS was not accessed or changed.
+
 ## D03/K02 final local completion pass — current result, 2026-09-28
 
 - Founder requested a local-only final pass: correct exchange/platform readiness (especially NSE EMERGE), coordinate daily IPO and 15-minute GMP sync without a separate health poller, investigate permitted zero-cost BSE/GMP access, verify current issues, review the rendered UI at five widths, and run the full workflow/gates. Planner v2 rules and AWS are out of scope.

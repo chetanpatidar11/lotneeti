@@ -1,9 +1,11 @@
+from datetime import date, timedelta
+from decimal import Decimal
 from unittest.mock import patch
 
 import pytest
 from django.conf import settings
 
-from ipos.models import IPO
+from ipos.models import IPO, GMPObservation
 from ipos.tasks import _sync_nse, run_ipo_sync, sync_gmp_sources
 
 
@@ -12,6 +14,7 @@ def test_only_one_daily_master_schedule_and_one_gmp_schedule():
     assert schedule["sync-daily-ipo-data"]["task"] == "ipos.tasks.sync_daily_ipo_data"
     assert str(schedule["sync-daily-ipo-data"]["schedule"]) == "<crontab: 0 0 * * * (m/h/dM/MY/d)>"
     assert schedule["sync-gmp"]["task"] == "ipos.tasks.sync_gmp_sources"
+    assert str(schedule["sync-gmp"]["schedule"]) == "<crontab: 0 9 * * * (m/h/dM/MY/d)>"
     assert "refresh-ipo-provider-health" not in schedule
     assert "sync-sebi-filings" not in schedule
 
@@ -31,7 +34,73 @@ def test_daily_sources_are_isolated_when_nse_is_not_configured(monkeypatch):
 
 @pytest.mark.django_db
 def test_gmp_sync_exits_without_relevant_ipo():
-    assert sync_gmp_sources() == {"status": "NO_RELEVANT_IPOS", "requested": 0}
+    assert sync_gmp_sources() == {
+        "status": "NO_RELEVANT_IPOS",
+        "provider": "investorgain",
+        "requested": 0,
+    }
+
+
+def make_gmp_ipo(name="Orient Cables (India) Limited"):
+    today = date.today()
+    return IPO.objects.create(
+        issuer_name=name,
+        issue_type=IPO.IssueType.MAINBOARD,
+        lower_price=Decimal("250.00"),
+        upper_price=Decimal("272.00"),
+        lot_size=55,
+        open_date=today,
+        close_date=today + timedelta(days=2),
+        allotment_date=today + timedelta(days=5),
+        status=IPO.Status.OPEN,
+        publication_state=IPO.PublicationState.PUBLISHED,
+        source_key="synthetic",
+        source_record_id=f"synthetic-{name}",
+    )
+
+
+@pytest.mark.django_db
+def test_daily_investorgain_sync_stores_an_observation_and_is_idempotent():
+    make_gmp_ipo()
+    payload = {
+        "reportTableData": [
+            {
+                "~id": 321,
+                "~ipo_name": "Orient Cables",
+                "GMP": "&#8377;<b>76</b> (27.94%)",
+                "Updated-On": "28-Sep 23:37",
+                "~urlrewrite_folder_name": "/gmp/orient-cables-ipo/321/",
+            }
+        ]
+    }
+    with patch(
+        "ipos.investorgain_gmp.fetch_payload",
+        return_value=("https://webnodejs.investorgain.com/example", payload),
+    ):
+        first = sync_gmp_sources()
+        second = sync_gmp_sources()
+    assert first["status"] == "OK"
+    assert first["requested"] == first["matched"] == first["created"] == 1
+    assert second["created"] == 0
+    observation = GMPObservation.objects.get(source_key="investorgain")
+    assert observation.value_per_share == Decimal("76")
+    assert observation.source_record_id == "321"
+    assert observation.source_url == "https://www.investorgain.com/gmp/orient-cables-ipo/321/"
+
+
+@pytest.mark.django_db
+def test_investorgain_skips_missing_gmp_instead_of_storing_zero():
+    make_gmp_ipo("No GMP Limited")
+    payload = {
+        "reportTableData": [{"~id": 123, "~ipo_name": "No GMP", "GMP": "&#8377;<b>--</b> (0.00%)"}]
+    }
+    with patch(
+        "ipos.investorgain_gmp.fetch_payload",
+        return_value=("https://webnodejs.investorgain.com/example", payload),
+    ):
+        result = sync_gmp_sources()
+    assert result["matched"] == result["created"] == 0
+    assert GMPObservation.objects.filter(source_key="investorgain").count() == 0
 
 
 @pytest.mark.django_db

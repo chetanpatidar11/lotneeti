@@ -9,7 +9,7 @@ from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.utils import timezone
 
-from ipos.models import IPO, IPOProviderSyncState
+from ipos.models import IPOProviderSyncState
 from ipos.sebi_filings import sync_sebi_index
 
 
@@ -164,16 +164,9 @@ def sync_official_ipo_sources():
 
 @shared_task(name="ipos.tasks.sync_gmp_sources")
 def sync_gmp_sources():
-    if not IPO.objects.filter(
-        publication_state=IPO.PublicationState.PUBLISHED,
-        status__in=[IPO.Status.OPEN, IPO.Status.UPCOMING],
-    ).exists():
-        return {"status": "NO_RELEVANT_IPOS", "requested": 0}
-    return {
-        "status": "PERMISSION_REQUIRED",
-        "reason": "No free GMP key and 15-minute redistribution entitlement are configured",
-        "requested": 0,
-    }
+    from ipos.investorgain_gmp import sync_investorgain_gmp
+
+    return _locked("gmp", sync_investorgain_gmp)
 
 
 @shared_task(name="ipos.tasks.detect_stale_data")
