@@ -137,6 +137,9 @@ class FounderAdminSite(AdminSite):
                 "filings": SEBIFiling.objects.all()[:25],
                 "published_count": IPO.objects.filter(publication_state="PUBLISHED").count(),
                 "gmp_states": GMPProviderState.objects.all(),
+                "gmp_sync_state": IPOProviderSyncState.objects.filter(
+                    source_key="investorgain"
+                ).first(),
                 "gmp_count": GMPObservation.objects.count(),
                 "nse_batch_count": IPOFeedBatch.objects.filter(source_key="nse").count(),
                 "bse_batch_count": IPOFeedBatch.objects.filter(source_key="bse").count(),

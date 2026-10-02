@@ -9,6 +9,7 @@ from django.core.exceptions import ValidationError
 from django.core.management import call_command
 from django.utils import timezone
 
+from ipos.licensed_source_schedule import reserve_refresh_slot
 from ipos.models import IPOProviderSyncState
 from ipos.sebi_filings import sync_sebi_index
 
@@ -73,9 +74,9 @@ def _sync_nse(*, refresh_discovery: bool) -> dict:
             "provider": "nse",
             "reason": "Founder source-use reference and private source cache are required",
         }
-    state.last_attempt_at = timezone.now()
-    state.last_status = "RUNNING"
-    state.save(update_fields=["last_attempt_at", "last_status"])
+    slot_error, state = reserve_refresh_slot("nse")
+    if slot_error:
+        return slot_error
     output = StringIO()
     try:
         call_command(
@@ -155,6 +156,11 @@ def run_ipo_sync(*, provider: str = "all") -> dict:
 @shared_task(name="ipos.tasks.sync_daily_ipo_data")
 def sync_daily_ipo_data():
     return _locked("daily", lambda: run_ipo_sync(provider="all"))
+
+
+@shared_task(name="ipos.tasks.sync_hourly_nse_ipo_data")
+def sync_hourly_nse_ipo_data():
+    return _locked("nse-hourly", lambda: _sync_nse(refresh_discovery=True))
 
 
 @shared_task(name="ipos.tasks.sync_official_ipo_sources")

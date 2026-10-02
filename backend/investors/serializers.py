@@ -77,7 +77,7 @@ class InvestorSerializer(serializers.ModelSerializer):
 
 
 class DematAccountSerializer(serializers.ModelSerializer):
-    dp_id = serializers.CharField(write_only=True, required=False, max_length=32)
+    dp_id = serializers.CharField(write_only=True, required=False, allow_blank=True, max_length=32)
     client_id = serializers.CharField(write_only=True, required=False, max_length=32)
     dp_id_masked = serializers.CharField(read_only=True)
     client_id_masked = serializers.CharField(read_only=True)
@@ -100,17 +100,18 @@ class DematAccountSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         if self.instance is None:
-            missing = {
-                field: "This field is required."
-                for field in ("dp_id", "client_id")
-                if field not in attrs
-            }
+            depository = attrs.get("depository")
+            missing = {}
+            if "client_id" not in attrs:
+                missing["client_id"] = "This field is required."
+            if depository == DematAccount.Depository.NSDL and not attrs.get("dp_id"):
+                missing["dp_id"] = "This field is required for NSDL accounts."
             if missing:
                 raise serializers.ValidationError(missing)
         return attrs
 
     def create(self, validated_data):
-        dp_id = validated_data.pop("dp_id")
+        dp_id = validated_data.pop("dp_id", "")
         client_id = validated_data.pop("client_id")
         demat = DematAccount(investor=self.context["investor"], **validated_data)
         demat.set_dp_id(dp_id)

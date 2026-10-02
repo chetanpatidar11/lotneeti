@@ -15,6 +15,7 @@ export type PlanLookups = {
   upis: Record<string, UpiLookup>;
   preferences: Record<string, FundingPreference[]>;
   selectedIpos: { ipo: string; mode: string }[];
+  unavailableSelectedIpoCount: number;
   capital: { balance: string; blocked: string; planned: string; available: string } | null;
 };
 
@@ -54,10 +55,13 @@ export default function PlanScreen({ workspaceId, lookups, canEdit }: {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ locked_rows: lockedMappings(previewRef.current?.rows ?? []) }),
       });
-      const result = await response.json();
       if (!response.ok) {
-        throw new Error("We could not create the plan. Check the selected IPOs and account details.");
+        const body = await response.json().catch(() => null) as { detail?: unknown } | null;
+        throw new Error(typeof body?.detail === "string"
+          ? body.detail
+          : "We could not create the plan. Check the selected IPOs and account details.");
       }
+      const result = await response.json();
       showPreview(result as PlanPreview);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "We could not create the plan.");
@@ -203,7 +207,7 @@ export default function PlanScreen({ workspaceId, lookups, canEdit }: {
       <div className="plan-creation-grid">
         <section className="plan-context-card" aria-labelledby="selected-ipos-heading">
           <h2 id="selected-ipos-heading">Selected IPOs</h2>
-          {lookups.selectedIpos.length === 0 ? <EmptyState title="No IPOs selected." detail="Choose an IPO to plan applications." action={<Link href="/ipos">Review IPOs</Link>} /> : <ul className="selected-ipo-strip">
+          {lookups.selectedIpos.length === 0 ? <EmptyState title={lookups.unavailableSelectedIpoCount > 0 ? "Your selected IPOs are closed." : "No IPOs selected."} detail={lookups.unavailableSelectedIpoCount > 0 ? "Choose an open or upcoming IPO before generating a plan." : "Choose an IPO to plan applications."} action={<Link href="/ipos">Review IPOs</Link>} /> : <ul className="selected-ipo-strip">
             {lookups.selectedIpos.map((selection) => <li key={selection.ipo}>
               <strong>{lookups.ipos[selection.ipo]?.name || "Selected IPO"}</strong>
               <span>{selection.mode === "RETAIL_ONLY" ? "Retail Only" : selection.mode === "RETAIL_PLUS_SHNI" ? "Retail + sHNI" : selection.mode === "SHNI_PREFERRED" ? "sHNI Preferred" : "Custom"}</span>

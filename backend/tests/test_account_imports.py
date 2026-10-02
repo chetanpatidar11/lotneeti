@@ -216,29 +216,43 @@ def test_account_import_rejects_unknown_selected_row_without_persisting():
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    ("part_name", "old", "new"),
-    [
-        (
-            "xl/workbook.xml",
-            b'name="AccountImportTemplate"',
-            b'name="DifferentSheet"',
-        ),
-        (
-            "xl/worksheets/sheet1.xml",
-            b"</row></sheetData>",
-            b'<c r="I3" t="inlineStr"><is><t>Unexpected</t></is></c></row></sheetData>',
-        ),
-    ],
-)
-def test_account_import_rejects_wrong_sheet_or_populated_extra_column(part_name, old, new):
+def test_account_import_accepts_single_sheet_with_excel_generated_title():
     owner = User.objects.create_user(email="owner@example.test")
     workspace = create_workspace(name="Family", owner=owner)
     client = APIClient()
     client.force_authenticate(owner)
     response = client.post(
         reverse("account-import-list", args=[workspace.pk]),
-        {"file": edited_upload(part_name, old, new)},
+        {
+            "file": edited_upload(
+                "xl/workbook.xml",
+                b'name="AccountImportTemplate"',
+                b'name="Worksheet"',
+            )
+        },
+        format="multipart",
+    )
+    assert response.status_code == 201
+    assert response.data["row_count"] == 2
+    assert response.data["error_count"] == 2
+    assert AccountImportBatch.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_account_import_rejects_populated_extra_column():
+    owner = User.objects.create_user(email="owner@example.test")
+    workspace = create_workspace(name="Family", owner=owner)
+    client = APIClient()
+    client.force_authenticate(owner)
+    response = client.post(
+        reverse("account-import-list", args=[workspace.pk]),
+        {
+            "file": edited_upload(
+                "xl/worksheets/sheet1.xml",
+                b"</row></sheetData>",
+                b'<c r="I3" t="inlineStr"><is><t>Unexpected</t></is></c></row></sheetData>',
+            )
+        },
         format="multipart",
     )
     assert response.status_code == 400

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { bankReasonSummary, canExportPlan, fundingLabel, issueMessage, lockedMappings, planStatus, rankedBanks, reviewedMappings, rowIssueMessages, rowStatus, selectableApplicants, selectableDemats, selectableUpis, type PlanRow } from "../src/lib/plan-presentation";
+import { bankReasonSummary, canExportPlan, fundingLabel, issueMessage, lockedMappings, planStatus, rankedBanks, reviewedMappings, rowIssueMessages, rowStatus, selectableApplicants, selectableDemats, selectableUpis, splitPlanningSelections, type PlanRow } from "../src/lib/plan-presentation";
 
 const row: PlanRow = {
   ipo: "synthetic-ipo",
@@ -16,6 +16,20 @@ const row: PlanRow = {
   blocking_reasons: [],
   reasons: [],
 };
+
+test("plan choices exclude closed IPOs and count unavailable selections", () => {
+  assert.deepEqual(splitPlanningSelections([
+    { ipo: "open", mode: "RETAIL_ONLY" },
+    { ipo: "upcoming", mode: "CUSTOM" },
+    { ipo: "closed", mode: "SHNI_PREFERRED" },
+  ], { open: "OPEN", upcoming: "UPCOMING", closed: "CLOSED" }), {
+    available: [
+      { ipo: "open", mode: "RETAIL_ONLY" },
+      { ipo: "upcoming", mode: "CUSTOM" },
+    ],
+    unavailableCount: 1,
+  });
+});
 
 test("blocking status outranks a cross-funding warning", () => {
   assert.equal(rowStatus({ ...row, warnings: ["CROSS_FUNDING"] }), "Warning");

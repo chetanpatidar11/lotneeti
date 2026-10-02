@@ -1,4 +1,4 @@
-"""One-daily, permissioned InvestorGain GMP source adapter.
+"""Licensed, rate-limited InvestorGain GMP source adapter.
 
 This is an unofficial GMP source.  It never supplies canonical IPO facts.
 """
@@ -15,6 +15,7 @@ from urllib.request import Request, urlopen
 import certifi
 from django.utils import timezone
 
+from ipos.licensed_source_schedule import reserve_refresh_slot
 from ipos.models import IPO, GMPObservation, GMPProviderState
 from ipos.provider_health import record_provider_failure, record_provider_success
 
@@ -52,7 +53,7 @@ def fetch_payload(now):
             "Accept": "application/json",
             "Origin": SOURCE_ORIGIN,
             "Referer": f"{SOURCE_ORIGIN}/",
-            "User-Agent": "LotNeeti-Beta/1.0 (permissioned founder beta; daily GMP sync)",
+            "User-Agent": "LotNeeti-Beta/1.0 (licensed founder beta; scheduled GMP sync)",
         },
     )
     try:
@@ -137,10 +138,16 @@ def sync_investorgain_gmp() -> dict:
         return {"status": "DISABLED", "provider": PROVIDER_KEY, "requested": 0}
 
     now = timezone.now()
+    slot_error, sync_state = reserve_refresh_slot(PROVIDER_KEY, at=now)
+    if slot_error:
+        return slot_error
     try:
         request_url, payload = fetch_payload(now)
     except Exception as exc:
         record_provider_failure(provider_key=PROVIDER_KEY, error=exc, observed_at=now)
+        sync_state.last_status = "ERROR"
+        sync_state.last_safe_error = type(exc).__name__
+        sync_state.save(update_fields=["last_status", "last_safe_error"])
         return {
             "status": "ERROR",
             "provider": PROVIDER_KEY,
@@ -181,6 +188,20 @@ def sync_investorgain_gmp() -> dict:
         )
         created += 1
     record_provider_success(provider_key=PROVIDER_KEY, observed_at=now)
+    sync_state.last_status = "OK"
+    sync_state.last_success_at = now
+    sync_state.last_safe_error = ""
+    sync_state.fetched_count = len(payload["reportTableData"])
+    sync_state.updated_count = created
+    sync_state.save(
+        update_fields=[
+            "last_status",
+            "last_success_at",
+            "last_safe_error",
+            "fetched_count",
+            "updated_count",
+        ]
+    )
     return {
         "status": "OK",
         "provider": PROVIDER_KEY,

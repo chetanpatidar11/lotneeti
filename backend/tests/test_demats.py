@@ -44,6 +44,27 @@ def test_demat_create_edit_and_masked_identifiers():
 
 
 @pytest.mark.django_db
+def test_cdsl_demat_can_omit_dp_id_but_nsdl_still_requires_it():
+    owner = User.objects.create_user(email="owner@example.test")
+    workspace = create_workspace(name="Family", owner=owner)
+    investor = Investor(workspace=workspace, name="Synthetic")
+    investor.set_pan("TESTX0001A")
+    investor.save()
+    client = APIClient()
+    client.force_authenticate(owner)
+    list_url = reverse("demat-list", args=[workspace.pk, investor.pk])
+
+    nsdl = client.post(list_url, {"depository": "NSDL", "client_id": "DEMO-CLIENT-0002"})
+    assert nsdl.status_code == 400
+    assert "dp_id" in nsdl.data
+
+    cdsl = client.post(list_url, {"depository": "CDSL", "client_id": "DEMO-BOID-0002"})
+    assert cdsl.status_code == 201
+    assert cdsl.data["dp_id_masked"] == "••••"
+    assert cdsl.data["client_id_masked"] == "••••0002"
+
+
+@pytest.mark.django_db
 def test_demat_workspace_scope_and_viewer_write_denial():
     owner = User.objects.create_user(email="owner@example.test")
     viewer = User.objects.create_user(email="viewer@example.test")

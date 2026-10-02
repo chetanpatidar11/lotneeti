@@ -1,10 +1,13 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
+from unittest.mock import patch
+from zoneinfo import ZoneInfo
 
 import pytest
 from django.core.exceptions import ValidationError
 
 from ipos.models import IPO
+from ipos.public_serializers import PublicIPOSerializer
 
 
 def issue(**changes):
@@ -64,3 +67,20 @@ def test_source_record_identity_is_unique():
     with pytest.raises(ValidationError):
         issue(issuer_name="Another IPO").save()
     issue(source_record_id="synthetic-ipo-002").save()
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("now", "expected_status"),
+    [
+        (datetime(2026, 10, 3, 16, 59, tzinfo=ZoneInfo("Asia/Kolkata")), IPO.Status.OPEN),
+        (datetime(2026, 10, 3, 17, 0, tzinfo=ZoneInfo("Asia/Kolkata")), IPO.Status.CLOSED),
+        (datetime(2026, 10, 4, 9, 0, tzinfo=ZoneInfo("Asia/Kolkata")), IPO.Status.CLOSED),
+    ],
+)
+def test_public_ipo_status_closes_at_5pm_ist_on_close_date(now, expected_status):
+    ipo = issue(status=IPO.Status.OPEN, publication_state=IPO.PublicationState.PUBLISHED)
+    ipo.save()
+
+    with patch("ipos.public_serializers.timezone.now", return_value=now):
+        assert PublicIPOSerializer(ipo).data["status"] == expected_status

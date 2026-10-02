@@ -4,13 +4,13 @@ This file is a fill-in worksheet for gates that cannot be completed with local s
 
 ## B07/B08 account import
 
-The supplied `docs/samples/AccountImportTemplate.xlsx` is a column-format example, not a ready-to-import data file: its CDSL and NSDL rows repeat the same PAN to illustrate the different demat fields. The sheet must be named `AccountImportTemplate` and use this exact header order:
+The supplied `docs/samples/AccountImportTemplate.xlsx` is a column-format example, not a ready-to-import data file: its CDSL and NSDL rows repeat the same PAN to illustrate the different demat fields. The workbook must have exactly one sheet and use this exact header order; the sheet tab name may vary:
 
 `Name, PAN, Type, DPID, CLIENT ID, UPI ID, Account Number, Bank Name`
 
-`Type` is `CDSL` or `NSDL`. `DPID` is required for NSDL. A CDSL row may leave DPID blank when CLIENT ID contains the complete BO identifier, as in the supplied sample. Imported banks start at Balance 0 and must be set by the user after confirmation. Imported UPIs remain unverified until the user verifies them.
+`Type` is `CDSL` or `NSDL`. `DPID` is required for NSDL. A CDSL row may leave DPID blank when CLIENT ID contains the complete BO identifier, as in the supplied sample. Valid rows are imported automatically after upload; rows with errors are skipped and remain visible in the preview. Imported banks start at Balance 0 and must be set by the user after import. Imported UPIs remain unverified until the user verifies them.
 
-Each PAN may occur only once in an import workbook and may not already belong to an investor in the workspace. Both repeated-PAN sample rows show row errors and cannot be confirmed as supplied. Make a local copy with unique synthetic PANs, account numbers and UPI IDs to test successful multi-row import; keep the same eight columns and sheet name.
+Each PAN may occur only once in an import workbook and may not already belong to an investor in the workspace. Both repeated-PAN sample rows show row errors and are skipped as supplied. Make a local copy with unique synthetic PANs, account numbers and UPI IDs to test successful multi-row import; keep the same eight columns.
 
 Local acceptance:
 
@@ -23,12 +23,11 @@ bash scripts/check.sh
 Manual acceptance in the running web app:
 
 1. Sign in to a synthetic workspace and open Settings.
-2. Choose `docs/samples/AccountImportTemplate.xlsx` under Import accounts. Verify both sample rows show a duplicate-PAN error and neither can be checked.
-3. Make a local copy with unique synthetic PAN, bank account and UPI values in the existing columns; upload it and confirm that PAN, demat, UPI and account values are masked.
-4. Leave one valid row unchecked and confirm the other valid row. Confirm only the checked row created an investor, demat, bank and UPI.
-5. Reupload the same unique-PAN copy; verify the already-imported PAN now shows an error and cannot be checked.
-6. Upload a copy with an invalid PAN and confirm the row error is visible and the invalid row cannot be checked.
-7. Set the imported bank Balance and verify the imported UPI is still unverified until manually verified.
+2. Choose `docs/samples/AccountImportTemplate.xlsx` under Import accounts. Verify both sample rows show a duplicate-PAN error and neither is imported.
+3. Make a local copy with unique synthetic PAN, bank account and UPI values in the existing columns; upload it and verify valid rows import automatically and PAN, demat, UPI and account values are masked in the result.
+4. Upload a copy containing one valid and one invalid row. Verify the valid row imports automatically and the invalid row remains visible with its error.
+5. Reupload the same unique-PAN copy; verify the already-imported PAN shows an error and is not imported again.
+6. Set the imported bank Balance and verify the imported UPI is still unverified until manually verified.
 
 ## G03 broker workbook mapping
 
@@ -67,15 +66,15 @@ Manual review:
 3. Mark intentional differences from Planner v2 with a reason and approval date.
 4. Convert approved cases to immutable test fixtures and run `bash scripts/check.sh`.
 
-## Platform policy decision
+## Platform policy configuration
 
-Planner preview intentionally returns 503 until this environment variable is explicit:
+The founder-approved beta policy is `WARN`. Set the uppercase value explicitly in each environment before starting Django:
 
 ```bash
-export PLANNER_PLATFORM_CROSS_FUNDING_POLICY=ALLOW   # or WARN or DISALLOW
+export PLANNER_PLATFORM_CROSS_FUNDING_POLICY=WARN   # ALLOW and DISALLOW are also supported
 ```
 
-Choose the policy in the local `.env` and beta environment before manual planning acceptance. No product document supplies a default.
+The local `.env` uses this value. Planner preview returns 503 when the setting is absent or not one of the uppercase policy values.
 
 ## AWS and backup gates
 

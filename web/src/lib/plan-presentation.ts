@@ -75,6 +75,14 @@ export type BankLookup = { label: string; owner: string; balance: string; active
 export type UpiLookup = { label: string; bank: string; holder: string; active: boolean; verified: boolean };
 export type FundingPreference = { bank: string; priority: number; enabled: boolean };
 
+export function splitPlanningSelections(
+  selections: { ipo: string; mode: string }[],
+  statuses: Record<string, string>,
+): { available: { ipo: string; mode: string }[]; unavailableCount: number } {
+  const available = selections.filter(({ ipo }) => ["OPEN", "UPCOMING"].includes(statuses[ipo]));
+  return { available, unavailableCount: selections.length - available.length };
+}
+
 export function selectableApplicants(applicants: Record<string, { name: string; priority: number; active: boolean }>): { id: string; name: string; priority: number }[] {
   return Object.entries(applicants)
     .filter(([, applicant]) => applicant.active)

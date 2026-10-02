@@ -1,5 +1,48 @@
 # LotNeeti execution status
 
+## Planner preview configuration and closed IPO state — local, 2026-10-02
+
+- Reproduced the reported plan failure as HTTP 503: the founder-approved local `WARN` policy was lowercase in `.env`. Corrected the local value and restarted Django with `WARN`; preview now returns HTTP 200.
+- The local preview currently has 11 published IPOs, all `CLOSED`. Plan selection now excludes closed/cancelled/listed issues, explains when saved selections are closed, and disables generation until an open or upcoming IPO is selected. The server-rendered Plan page returned HTTP 200 with that notice.
+- Full `scripts/check.sh` passed: 355 backend tests, 29 web tests, 1 Android test, 115/115 P0 and 5/5 P1 planner mappings, lint, typecheck, build, migration checks, and Django checks. Seven core routes returned HTTP 200. No live source requests or production data changes.
+
+## NSE and InvestorGain licensed cadence — local, 2026-10-02
+
+- Celery Beat schedules both providers at 00:01 and hourly from 09:00 through 19:00 Asia/Kolkata. A persistent per-provider slot reservation blocks manual/out-of-window duplicates. The NSE slot covers one full coordinator run, including uncached detail/document requests.
+- Verification used mocked clocks and network calls only: 27 provider/consensus/health tests passed; Django checks, migration drift, Ruff and formatting passed. No live requests were made. Local refresh still requires Celery worker/Beat processes to run.
+
+## Settings Accounts manual create actions — local, 2026-10-01
+
+- Added demat, bank and UPI creation forms to their Accounts sections with workspace-scoped proxy routes and immediate list updates. CDSL can omit DPID when the client ID is the complete BO ID; NSDL still requires it. UPI creation requires a holder and bank and starts unverified; new banks accept an opening Balance.
+- Eight demat/bank/UPI API tests, 28 web tests, frontend lint/typecheck/build, Ruff and diagnostics passed. Local Settings/API health return HTTP 200. Browser automation was unavailable for interactive form verification; no accounts were created during testing.
+
+## B08 Automatic valid-row import — local, 2026-10-01
+
+- Workbook upload now imports every row that passes validation without a second confirmation click. The masked preview remains; invalid and duplicate-PAN rows are skipped and their errors are shown. Bank accounts still start at Balance 0 and UPIs remain unverified.
+- The frontend sends only preview-valid row numbers to the existing atomic, workspace-scoped confirmation endpoint. A mocked browser check submitted a valid row automatically and left an invalid row visible without writing account data.
+- All 9 account-import tests, all 28 web tests, frontend lint/typecheck/build, Ruff, and `git diff --check` passed.
+
+## B07 Excel workbook title compatibility — local, 2026-10-01
+
+- Account import now accepts any title for a single worksheet while keeping the exact eight-column header validation. The supplied `.xlsx` parses as 17 rows; preview validation reports missing Account Number and Bank Name values on all rows and one invalid PAN. No rows were confirmed or imported.
+- All 9 account-import tests, Ruff checks, formatting, and `git diff --check` passed. The spreadsheet format is supported; row data must be corrected in a private copy before valid rows can be imported.
+
+## Preferred funding drawer UI — local, 2026-10-01
+
+- Preferred accounts in the investor View drawer now use compact fixed-size priority badges, ranked rows with move controls, one Save order action, enabled toggles, and per-account removal. The add-account form and operation feedback have distinct, responsive treatment.
+- Browser-verified add/remove with synthetic accounts and checked the drawer at 390px. All 28 web tests, lint, typecheck, and production build passed. No production data changes.
+
+## Settings investor View drawer — local, 2026-10-01
+
+- Fixed the shared native dialog close handler so a queued close event cannot dismiss a drawer that has reopened during React Strict Mode effect replay. Browser verification confirms View opens, closes, and can open another investor.
+- All 28 web tests, lint, typecheck and production build passed. No deployment or production data changes.
+
+## D06/J04/J07 IPO card follow-up — local, 2026-09-30
+
+- Public IPO responses now project an open issue as closed at 17:00 Asia/Kolkata on its effective close date; canonical source snapshots remain unchanged, and Planner already enforces the same cutoff.
+- IPO cards show allotment date without listing date, omit disabled GMP history rows and provider keys, format whole-rupee values without `.00` while retaining two paise digits, and show exact issuer-matched SEBI document links with type/date beneath the issuer. The separate filing list was removed; unmatched filings are not attached to another issuer.
+- Validation passed: 29 focused backend tests, all 28 web tests, frontend lint/typecheck/production build, Ruff checks, and authenticated local `/ipos?filter=all` HTTP 200 rendering. No deployment or production data changes.
+
 ## D04/D06 permissioned daily InvestorGain GMP — local, 2026-09-29
 
 - The Founder confirmed written permission for the InvestorGain GMP endpoint. The agreement remains private and is not copied into Git. `sync_gmp_sources` now makes one transparent HTTPS request at **09:00 Asia/Kolkata**; it does not send browser-client-hint headers or run on member requests. It stores only value, IPO/source identity, source detail URL, source update time when supplied, fetch time and a payload hash. InvestorGain remains an **unofficial GMP source**, never a source of canonical IPO facts.
@@ -52,8 +95,8 @@
 ## 2026-09-28 founder account workbook review
 
 - Read `docs/DematAccounts_testing.xlsx` locally without importing its identifiers into the application or Git. It has one `Worksheet` tab, the approved eight account-import columns in the correct order, and 17 CDSL account rows. The account values are treated as sensitive despite the testing label; the exact file is now Git-ignored.
-- It cannot be uploaded to the current B07/B08 importer as supplied: the required sheet name is `AccountImportTemplate`, all 17 rows lack Account Number and Bank Name, and one PAN fails the required format. The remaining 16 PANs match the format; no duplicate PANs or formula cells were found. Renaming the sheet alone would not make any row importable. No data was written to a workspace or AWS.
-- This is an account source worksheet, not the G03 broker destination export template/mapping or the M03 approved historical planner cases. Those release gates remain open. The founder can supply the two missing bank columns and correct the invalid PAN in a private local copy, then rename its sheet for B07/B08 preview. Do not commit the completed workbook.
+- The supplied workbook was initially rejected because its single tab was named `Worksheet` instead of `AccountImportTemplate`. B07/B08 now accepts any single-sheet title while preserving the approved eight-column header order. Row validation still reports missing Account Number and Bank Name values and invalid PAN format; no cell values were written to a workspace or AWS.
+- This is an account source worksheet, not the G03 broker destination export template/mapping or the M03 approved historical planner cases. Those release gates remain open. Complete missing bank fields and correct invalid PAN data in a private local copy before confirming valid rows. Do not commit the completed workbook.
 
 ## 2026-09-28 formal release readiness review — before staging authorization
 

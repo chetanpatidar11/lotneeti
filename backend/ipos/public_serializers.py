@@ -1,6 +1,8 @@
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
+from django.utils import timezone
 from rest_framework import serializers
 
 from ipos.content import published_summary
@@ -122,6 +124,11 @@ class PublicIPOSerializer(serializers.ModelSerializer):
         effective = self._ipo_resolution(instance).values
         for name in OVERRIDABLE_FIELDS.intersection(result):
             result[name] = self.fields[name].to_representation(effective[name])
+        close_at = datetime.combine(
+            effective["close_date"], time(17), tzinfo=ZoneInfo("Asia/Kolkata")
+        )
+        if effective["status"] == IPO.Status.OPEN and timezone.now() >= close_at:
+            result["status"] = IPO.Status.CLOSED
         return result
 
     def _ipo_resolution(self, obj):

@@ -27,7 +27,6 @@ from investors.models import (
 
 MAX_WORKBOOK_BYTES = 5 * 1024 * 1024
 MAX_XML_BYTES = 20 * 1024 * 1024
-SHEET_NAME = "AccountImportTemplate"
 EXPECTED_HEADERS = (
     "Name",
     "PAN",
@@ -89,8 +88,6 @@ def _sheet_path(archive: zipfile.ZipFile) -> str:
     sheets = workbook.find(_tag("sheets"))
     if sheets is None or len(sheets) != 1:
         raise AccountImportError("Use a workbook with exactly one account sheet.")
-    if sheets[0].attrib.get("name") != SHEET_NAME:
-        raise AccountImportError(f"The account sheet must be named {SHEET_NAME}.")
     relationship_id = sheets[0].attrib.get(f"{{{REL_NS}}}id")
     relationships = _read_xml(archive, "xl/_rels/workbook.xml.rels")
     for relationship in relationships:

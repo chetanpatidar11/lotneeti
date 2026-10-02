@@ -2,7 +2,7 @@
 {% block content %}
 <p><a href="{% url 'founder_admin:index' %}">Staff home</a> · <a href="{% url 'founder_admin:ipo-exceptions' %}">Conflicts</a> · <a href="{% url 'founder_admin:gmp-providers' %}">GMP providers</a></p>
 <h1>Live data</h1>
-<p>{{ published_count }} published canonical IPOs. Daily sync runs at 00:00 IST. GMP is checked every 15 minutes when relevant issues exist.</p>
+<p>{{ published_count }} published canonical IPOs. Licensed NSE and InvestorGain refresh slots are 12:01 AM and hourly from 9:00 AM through 7:00 PM IST. Manual refreshes outside those slots are skipped.</p>
 {% if sync_result %}<div role="status" aria-live="polite">{% for provider, result in sync_result.items %}<p>{{ provider|upper }}: {{ result.status }}{% if result.discovered != None %} · {{ result.discovered }} discovered, {{ result.ready }} ready, {{ result.changed }} changed{% endif %}{% if result.fetched %} · {{ result.fetched }} fetched{% endif %}{% if result.reason %} · {{ result.reason }}{% endif %}{% if result.error %} · {{ result.error }}{% endif %}</p>{% endfor %}</div>{% endif %}
 <form method="post">{% csrf_token %}
   <button type="submit" name="action" value="sync_all">Sync all now</button>
@@ -20,7 +20,7 @@
 <p>Last attempt: {{ sebi_state.last_attempt_at|default:"Never" }} · Last success: {{ sebi_state.last_success_at|default:"Never" }} · Fetched: {{ sebi_state.fetched_count }} · State: {{ sebi_state.last_status|default:"Never" }}{% if sebi_state.last_safe_error %} · {{ sebi_state.last_safe_error }}{% endif %}</p>
 <form method="post">{% csrf_token %}<button type="submit" name="action" value="{% if sebi_state.enabled %}disable_sebi{% else %}enable_sebi{% endif %}">{% if sebi_state.enabled %}Disable{% else %}Enable{% endif %} SEBI sync</button></form>
 <h2>GMP</h2>
-<p>{{ gmp_count }} observations. Automatic 15-minute retrieval is paused until a zero-cost source permits that frequency and a key is configured. Founder entry remains available.</p>
+<p>{{ gmp_count }} observations. InvestorGain last attempt: {{ gmp_sync_state.last_attempt_at|default:"Never" }} · Last success: {{ gmp_sync_state.last_success_at|default:"Never" }} · State: {{ gmp_sync_state.last_status|default:"Never" }}{% if gmp_sync_state.last_safe_error %} · {{ gmp_sync_state.last_safe_error }}{% endif %}. Founder entry remains available.</p>
 <h2>Recent SEBI documents</h2>
 <table><thead><tr><th>Issuer</th><th>Document</th><th>Filed</th><th>Review</th><th>Source</th></tr></thead><tbody>
 {% for filing in filings %}<tr><td>{{ filing.issuer_name }}</td><td>{{ filing.document_type }}</td><td>{{ filing.filing_date }}</td><td>{{ filing.review_state }}</td><td><a href="{{ filing.document_url|default:filing.source_url }}" target="_blank" rel="noopener noreferrer">Open SEBI document</a></td></tr>{% empty %}<tr><td colspan="5">No filing index has been fetched.</td></tr>{% endfor %}

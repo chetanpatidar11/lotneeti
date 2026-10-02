@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 
 import pytest
 from django.urls import reverse
@@ -13,7 +13,8 @@ from planner.persistence import create_plan_run
 
 
 @pytest.mark.django_db
-def test_operations_cards_use_published_open_ipos_and_scoped_application_sale_state():
+def test_operations_cards_use_published_open_ipos_and_scoped_application_sale_state(monkeypatch):
+    monkeypatch.setattr("applications.views.timezone.localdate", lambda: date(2026, 9, 30))
     owner, workspace, snapshot = setup_plan()
     run = create_plan_run(workspace=workspace, snapshot=snapshot, actor=owner)
     client = APIClient()

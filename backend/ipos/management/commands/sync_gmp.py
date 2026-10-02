@@ -4,7 +4,7 @@ from ipos.tasks import sync_gmp_sources
 
 
 class Command(BaseCommand):
-    help = "Run the permissioned daily GMP source synchronization"
+    help = "Run the licensed GMP source synchronization in an approved IST refresh slot"
 
     def handle(self, *args, **options):
         result = sync_gmp_sources()

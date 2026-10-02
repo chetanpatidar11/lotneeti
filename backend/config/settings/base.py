@@ -126,10 +126,18 @@ CELERY_BEAT_SCHEDULE = {
     },
     "sync-daily-ipo-data": {
         "task": "ipos.tasks.sync_daily_ipo_data",
-        "schedule": crontab(hour=0, minute=0),
+        "schedule": crontab(hour=0, minute=1),
     },
-    "sync-gmp": {
+    "sync-hourly-nse-ipo-data": {
+        "task": "ipos.tasks.sync_hourly_nse_ipo_data",
+        "schedule": crontab(hour="9-19", minute=0),
+    },
+    "sync-gmp-midnight": {
         "task": "ipos.tasks.sync_gmp_sources",
-        "schedule": crontab(hour=9, minute=0),
+        "schedule": crontab(hour=0, minute=1),
+    },
+    "sync-gmp-hourly": {
+        "task": "ipos.tasks.sync_gmp_sources",
+        "schedule": crontab(hour="9-19", minute=0),
     },
 }
