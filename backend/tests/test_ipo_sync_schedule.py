@@ -15,18 +15,18 @@ def ist(hour, minute=0):
     return datetime(2026, 10, 1, hour, minute, tzinfo=ZoneInfo("Asia/Kolkata"))
 
 
-def test_nse_and_gmp_schedules_match_the_licensed_slots():
+def test_investorgain_schedule_matches_the_licensed_slots():
     schedule = settings.CELERY_BEAT_SCHEDULE
     assert schedule["sync-daily-ipo-data"]["task"] == "ipos.tasks.sync_daily_ipo_data"
     assert str(schedule["sync-daily-ipo-data"]["schedule"]) == "<crontab: 1 0 * * * (m/h/dM/MY/d)>"
-    assert schedule["sync-hourly-nse-ipo-data"]["task"] == "ipos.tasks.sync_hourly_nse_ipo_data"
-    assert str(schedule["sync-hourly-nse-ipo-data"]["schedule"]) == (
+    assert schedule["sync-hourly-investorgain-ipo-data"]["task"] == (
+        "ipos.tasks.sync_hourly_investorgain_ipo_data"
+    )
+    assert str(schedule["sync-hourly-investorgain-ipo-data"]["schedule"]) == (
         "<crontab: 0 9-19 * * * (m/h/dM/MY/d)>"
     )
-    assert schedule["sync-gmp-midnight"]["task"] == "ipos.tasks.sync_gmp_sources"
-    assert str(schedule["sync-gmp-midnight"]["schedule"]) == "<crontab: 1 0 * * * (m/h/dM/MY/d)>"
-    assert schedule["sync-gmp-hourly"]["task"] == "ipos.tasks.sync_gmp_sources"
-    assert str(schedule["sync-gmp-hourly"]["schedule"]) == ("<crontab: 0 9-19 * * * (m/h/dM/MY/d)>")
+    assert "sync-gmp-midnight" not in schedule
+    assert "sync-gmp-hourly" not in schedule
     assert "refresh-ipo-provider-health" not in schedule
     assert "sync-sebi-filings" not in schedule
 
@@ -93,24 +93,30 @@ def test_founder_manual_nse_sync_bypasses_the_automatic_schedule(monkeypatch):
 
 
 @pytest.mark.django_db
-def test_daily_sources_are_isolated_when_nse_is_not_configured(monkeypatch):
-    monkeypatch.delenv("LOTNEETI_NSE_SOURCE_RIGHTS_REFERENCE", raising=False)
-    monkeypatch.delenv("LOTNEETI_IPO_SOURCE_CACHE_DIR", raising=False)
-    with patch("ipos.tasks.sync_sebi_filings", return_value={"status": "OK", "fetched": 2}):
+def test_daily_sync_uses_only_investorgain():
+    with patch("ipos.tasks.sync_gmp_sources", return_value={"status": "OK", "fetched": 2}):
         first = run_ipo_sync()
         second = run_ipo_sync()
     assert first == second
-    assert first["nse"]["status"] == "CONFIGURATION_REQUIRED"
-    assert first["bse"]["status"] == "PERMISSION_REQUIRED"
-    assert first["sebi"]["status"] == "OK"
+    assert first == {"investorgain": {"status": "OK", "fetched": 2}}
 
 
 @pytest.mark.django_db
-def test_gmp_sync_exits_without_relevant_ipo():
-    assert sync_gmp_sources() == {
-        "status": "NO_RELEVANT_IPOS",
-        "provider": "investorgain",
-        "requested": 0,
+def investorgain_row():
+    return {
+        "~id": 321,
+        "~ipo_name": "Orient Cables",
+        "~ipo_status1": "O",
+        "~ipo_category1": "MAINBOARD",
+        "Price (₹)": "250-272",
+        "Lot": "55",
+        "Open": "1-Oct",
+        "Close": "3-Oct",
+        "BoA Dt": "6-Oct",
+        "Listing": "8-Oct",
+        "GMP": "&#8377;<b>76</b> (27.94%)",
+        "Updated-On": "1-Oct 09:00",
+        "~urlrewrite_folder_name": "/gmp/orient-cables-ipo/321/",
     }
 
 
@@ -134,18 +140,7 @@ def make_gmp_ipo(name="Orient Cables (India) Limited"):
 
 @pytest.mark.django_db
 def test_daily_investorgain_sync_stores_an_observation_and_is_idempotent():
-    make_gmp_ipo()
-    payload = {
-        "reportTableData": [
-            {
-                "~id": 321,
-                "~ipo_name": "Orient Cables",
-                "GMP": "&#8377;<b>76</b> (27.94%)",
-                "Updated-On": "28-Sep 23:37",
-                "~urlrewrite_folder_name": "/gmp/orient-cables-ipo/321/",
-            }
-        ]
-    }
+    payload = {"reportTableData": [investorgain_row()]}
     with patch(
         "ipos.investorgain_gmp.fetch_payload",
         return_value=("https://webnodejs.investorgain.com/example", payload),
@@ -169,18 +164,7 @@ def test_daily_investorgain_sync_stores_an_observation_and_is_idempotent():
 
 @pytest.mark.django_db
 def test_founder_manual_gmp_sync_bypasses_the_automatic_schedule():
-    make_gmp_ipo()
-    payload = {
-        "reportTableData": [
-            {
-                "~id": 321,
-                "~ipo_name": "Orient Cables",
-                "GMP": "&#8377;<b>76</b> (27.94%)",
-                "Updated-On": "28-Sep 23:37",
-                "~urlrewrite_folder_name": "/gmp/orient-cables-ipo/321/",
-            }
-        ]
-    }
+    payload = {"reportTableData": [investorgain_row()]}
     with (
         patch("ipos.investorgain_gmp.timezone.now", return_value=ist(20)),
         patch(

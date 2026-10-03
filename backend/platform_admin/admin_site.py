@@ -46,7 +46,7 @@ from ipos.provider_health import (
     set_provider_enabled,
     set_provider_override,
 )
-from ipos.tasks import run_ipo_sync, sync_gmp_sources
+from ipos.tasks import run_ipo_sync
 from planner.models import PlannerPolicy, PlanRun
 from planner.policies import platform_policy, set_policy
 from platform_admin.totp import verify_admin_code
@@ -108,8 +108,8 @@ class FounderAdminSite(AdminSite):
         sync_result = None
         if request.method == "POST":
             action = request.POST.get("action")
-            if action in {"sync_all", "sync_nse", "sync_bse", "sync_documents", "sync_sebi"}:
-                provider = action.removeprefix("sync_")
+            if action == "sync_investorgain":
+                provider = "investorgain"
                 sync_result = run_ipo_sync(provider=provider, manual=True)
                 record_event(
                     action="admin.provider_manual_refresh",
@@ -117,19 +117,6 @@ class FounderAdminSite(AdminSite):
                     actor=request.user,
                     metadata={"provider": provider},
                 )
-            elif action == "sync_gmp":
-                sync_result = {"gmp": sync_gmp_sources(manual=True)}
-                record_event(
-                    action="admin.provider_manual_refresh",
-                    target=request.user,
-                    actor=request.user,
-                    metadata={"provider": "investorgain"},
-                )
-            elif action in {"enable_sebi", "disable_sebi"}:
-                state, _ = IPOProviderSyncState.objects.get_or_create(source_key="sebi")
-                state.enabled = request.POST["action"] == "enable_sebi"
-                state.save(update_fields=["enabled"])
-                sync_result = {"status": "ENABLED" if state.enabled else "DISABLED"}
             else:
                 sync_result = {
                     "status": "UNAVAILABLE",

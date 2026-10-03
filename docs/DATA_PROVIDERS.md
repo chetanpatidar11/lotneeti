@@ -1,6 +1,12 @@
 # LotNeeti data providers — founder beta
 
-## Current local provider state — 2026-10-02
+## Current provider decision — 2026-10-03
+
+The Founder selected **InvestorGain as the single IPO and GMP source**. The scheduled and Founder Admin refresh use its authorised report endpoint for active/upcoming issue name, category, price, lot, open/close, basis-of-allotment, listing and GMP fields. One response creates/updates the InvestorGain-backed IPOs and appends GMP observations. Rows missing a planner-required field are skipped rather than guessed.
+
+NSE, BSE and SEBI jobs are no longer scheduled or exposed as Founder Admin refresh actions. Their existing code and historical records are retained for audit/recovery but are not called by the active source workflow. Founder Admin can refresh InvestorGain repeatedly at any time; automatic jobs remain at 00:01 and hourly 09:00–19:00 Asia/Kolkata.
+
+## Earlier local provider state — 2026-10-02
 
 The isolated local preview has **11/11 current NSE issues READY and plannable**: eight NSE Mainboard and three NSE EMERGE. All have NSE detail and official document facts; no BSE record is required for an NSE EMERGE issue. GREENASIA, BMISL and HIMALAYAN are NSE EMERGE with NSE designated according to their official RHP covers, despite an `isBse` flag in the NSE list. AONESTEELS is dual listed and its official RHP designates BSE. MONEYVIEW Bid Lot **441** and AONESTEELS Bid Lot **37** are current NSE detail results, not constants in the provider. The local canonical publisher was rerun twice and the second pass made zero changes. None of these changes has been deployed to AWS.
 

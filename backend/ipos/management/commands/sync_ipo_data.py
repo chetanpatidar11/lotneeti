@@ -7,7 +7,7 @@ class Command(BaseCommand):
     help = "Run the same coordinated IPO pipeline used by Founder Admin and Celery"
 
     def add_arguments(self, parser):
-        parser.add_argument("--provider", choices=("nse", "bse", "sebi", "documents"))
+        parser.add_argument("--provider", choices=("investorgain",))
 
     def handle(self, *args, **options):
         provider = options["provider"]

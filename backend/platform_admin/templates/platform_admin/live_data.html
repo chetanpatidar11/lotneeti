@@ -2,27 +2,11 @@
 {% block content %}
 <p><a href="{% url 'founder_admin:index' %}">Staff home</a> · <a href="{% url 'founder_admin:ipo-exceptions' %}">Conflicts</a> · <a href="{% url 'founder_admin:gmp-providers' %}">GMP providers</a></p>
 <h1>Live data</h1>
-<p>{{ published_count }} published canonical IPOs. Automatic NSE and InvestorGain refreshes run at 12:01 AM and hourly from 9:00 AM through 7:00 PM IST. Founder Admin manual refreshes may run at any time and are audit logged.</p>
+<p>{{ published_count }} published IPOs. InvestorGain supplies IPO facts and GMP. Automatic refreshes run at 12:01 AM and hourly from 9:00 AM through 7:00 PM IST. Founder Admin manual refreshes may run at any time and are audit logged.</p>
 {% if sync_result %}<div role="status" aria-live="polite">{% for provider, result in sync_result.items %}<p>{{ provider|upper }}: {{ result.status }}{% if result.discovered != None %} · {{ result.discovered }} discovered, {{ result.ready }} ready, {{ result.changed }} changed{% endif %}{% if result.fetched %} · {{ result.fetched }} fetched{% endif %}{% if result.reason %} · {{ result.reason }}{% endif %}{% if result.error %} · {{ result.error }}{% endif %}</p>{% endfor %}</div>{% endif %}
 <form method="post">{% csrf_token %}
-  <button type="submit" name="action" value="sync_all">Sync all now</button>
-  <button type="submit" name="action" value="sync_nse">Sync NSE now</button>
-  <button type="submit" name="action" value="sync_bse">Sync BSE now</button>
-  <button type="submit" name="action" value="sync_documents">Refresh documents now</button>
-  <button type="submit" name="action" value="sync_gmp">Sync GMP now</button>
-  <button type="submit" name="action" value="sync_sebi">Sync SEBI index now</button>
+  <button type="submit" name="action" value="sync_investorgain">Refresh IPOs and GMP now</button>
 </form>
-<h2>NSE Mainboard and NSE EMERGE</h2>
-<p>Saved batches: {{ nse_batch_count }} · Last attempt: {{ nse_state.last_attempt_at|default:"Never" }} · Last success: {{ nse_state.last_success_at|default:"Never" }} · Discovered: {{ nse_state.fetched_count|default:0 }} · Changed: {{ nse_state.updated_count|default:0 }} · State: {{ nse_state.last_status|default:"Not run by coordinator" }} {% if nse_state.last_safe_error %}· {{ nse_state.last_safe_error }}{% endif %}</p>
-<h2>BSE Mainboard and BSE SME</h2>
-<p>Saved batches: {{ bse_batch_count }} · Automatic official discovery requires a permitted feed. Saved official detail and document imports remain available. BSE absence does not block NSE EMERGE issues.</p>
-<h2>Official documents / SEBI</h2>
-<p>Last attempt: {{ sebi_state.last_attempt_at|default:"Never" }} · Last success: {{ sebi_state.last_success_at|default:"Never" }} · Fetched: {{ sebi_state.fetched_count }} · State: {{ sebi_state.last_status|default:"Never" }}{% if sebi_state.last_safe_error %} · {{ sebi_state.last_safe_error }}{% endif %}</p>
-<form method="post">{% csrf_token %}<button type="submit" name="action" value="{% if sebi_state.enabled %}disable_sebi{% else %}enable_sebi{% endif %}">{% if sebi_state.enabled %}Disable{% else %}Enable{% endif %} SEBI sync</button></form>
-<h2>GMP</h2>
-<p>{{ gmp_count }} observations. InvestorGain last attempt: {{ gmp_sync_state.last_attempt_at|default:"Never" }} · Last success: {{ gmp_sync_state.last_success_at|default:"Never" }} · State: {{ gmp_sync_state.last_status|default:"Never" }}{% if gmp_sync_state.last_safe_error %} · {{ gmp_sync_state.last_safe_error }}{% endif %}. Founder entry remains available.</p>
-<h2>Recent SEBI documents</h2>
-<table><thead><tr><th>Issuer</th><th>Document</th><th>Filed</th><th>Review</th><th>Source</th></tr></thead><tbody>
-{% for filing in filings %}<tr><td>{{ filing.issuer_name }}</td><td>{{ filing.document_type }}</td><td>{{ filing.filing_date }}</td><td>{{ filing.review_state }}</td><td><a href="{{ filing.document_url|default:filing.source_url }}" target="_blank" rel="noopener noreferrer">Open SEBI document</a></td></tr>{% empty %}<tr><td colspan="5">No filing index has been fetched.</td></tr>{% endfor %}
-</tbody></table>
+<h2>InvestorGain IPO data and GMP</h2>
+<p>{{ gmp_count }} GMP observations. Last attempt: {{ gmp_sync_state.last_attempt_at|default:"Never" }} · Last success: {{ gmp_sync_state.last_success_at|default:"Never" }} · State: {{ gmp_sync_state.last_status|default:"Never" }}{% if gmp_sync_state.last_safe_error %} · {{ gmp_sync_state.last_safe_error }}{% endif %}.</p>
 {% endblock %}

@@ -138,26 +138,11 @@ def _sync_nse(*, refresh_discovery: bool, manual: bool = False) -> dict:
 
 
 def run_ipo_sync(*, provider: str = "all", manual: bool = False) -> dict:
-    """Run IPO sources; only Founder Admin requests may bypass scheduled slots."""
+    """Run the sole founder-approved InvestorGain IPO and GMP source."""
 
-    if provider not in {"all", "nse", "bse", "documents", "sebi"}:
+    if provider not in {"all", "investorgain"}:
         raise ValueError("Unsupported provider")
-    results = {}
-    if provider in {"all", "nse", "documents"}:
-        results["nse"] = _sync_nse(
-            refresh_discovery=provider != "documents", manual=manual
-        )
-    if provider in {"all", "bse"}:
-        results["bse"] = {
-            "status": "PERMISSION_REQUIRED",
-            "reason": (
-                "No permitted automatic BSE IPO discovery feed is configured; "
-                "saved official imports remain available"
-            ),
-        }
-    if provider in {"all", "sebi", "documents"}:
-        results["sebi"] = sync_sebi_filings()
-    return results
+    return {"investorgain": sync_gmp_sources(manual=manual)}
 
 
 @shared_task(name="ipos.tasks.sync_daily_ipo_data")
@@ -167,7 +152,12 @@ def sync_daily_ipo_data():
 
 @shared_task(name="ipos.tasks.sync_hourly_nse_ipo_data")
 def sync_hourly_nse_ipo_data():
-    return _locked("nse-hourly", lambda: _sync_nse(refresh_discovery=True))
+    return _locked("investorgain-hourly", sync_gmp_sources)
+
+
+@shared_task(name="ipos.tasks.sync_hourly_investorgain_ipo_data")
+def sync_hourly_investorgain_ipo_data():
+    return _locked("investorgain-hourly", sync_gmp_sources)
 
 
 @shared_task(name="ipos.tasks.sync_official_ipo_sources")

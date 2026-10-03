@@ -1,22 +1,28 @@
-"""Licensed, rate-limited InvestorGain GMP source adapter.
-
-This is an unofficial GMP source.  It never supplies canonical IPO facts.
-"""
+"""Founder-authorized InvestorGain IPO and GMP source adapter."""
 
 import hashlib
 import html
 import json
 import re
 import ssl
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from urllib.request import Request, urlopen
 
 import certifi
+from django.db import transaction
 from django.utils import timezone
 
+from ipos.dto import IPORecord
 from ipos.licensed_source_schedule import reserve_refresh_slot
-from ipos.models import IPO, GMPObservation, GMPProviderState, IPOProviderSyncState
+from ipos.models import (
+    IPO,
+    GMPObservation,
+    GMPProviderState,
+    IPOProviderSyncState,
+    IPOSourceLink,
+    IPOSourceSnapshot,
+)
 from ipos.provider_health import record_provider_failure, record_provider_success
 
 PROVIDER_KEY = "investorgain"
@@ -40,7 +46,7 @@ def source_url(now) -> str:
     fiscal_year = f"{fiscal_start}-{str(fiscal_start + 1)[-2:]}"
     return (
         "https://webnodejs.investorgain.com/cloud/v2/report/data-read/331/"
-        f"1/{local.month}/{local.year}/{fiscal_year}/0/all?search=&r1&v=00-49"
+        f"1/{local.month}/{local.year}/{fiscal_year}/0/all?search=&r2&v=15-18"
     )
 
 
@@ -53,7 +59,7 @@ def fetch_payload(now):
             "Accept": "application/json",
             "Origin": SOURCE_ORIGIN,
             "Referer": f"{SOURCE_ORIGIN}/",
-            "User-Agent": "LotNeeti-Beta/1.0 (licensed founder beta; scheduled GMP sync)",
+            "User-Agent": "LotNeeti-Beta/1.0 (founder-authorized IPO and GMP sync)",
         },
     )
     try:
@@ -100,6 +106,110 @@ def _observed_at(row: dict, now):
     return candidate
 
 
+def _text(value: object) -> str:
+    return re.sub(r"<[^>]+>", "", html.unescape(str(value or ""))).strip()
+
+
+def _price_range(value: object) -> tuple[Decimal, Decimal]:
+    values = re.findall(r"\d+(?:\.\d+)?", _text(value).replace(",", ""))
+    if not values:
+        raise ValueError("InvestorGain price is missing")
+    lower = Decimal(values[0])
+    upper = Decimal(values[-1])
+    if lower <= 0 or lower > upper:
+        raise ValueError("InvestorGain price range is invalid")
+    return lower, upper
+
+
+def _lot_size(value: object) -> int:
+    values = re.findall(r"\d+", _text(value).replace(",", ""))
+    if not values or int(values[0]) <= 0:
+        raise ValueError("InvestorGain lot size is missing")
+    return int(values[0])
+
+
+def _month_day(value: object) -> tuple[int, int]:
+    parsed = datetime.strptime(_text(value), "%d-%b")
+    return parsed.month, parsed.day
+
+
+def _event_dates(row: dict, now) -> tuple[date, date, date, date | None]:
+    open_month, open_day = _month_day(row.get("Open"))
+    local_today = timezone.localdate(now)
+    year = local_today.year + int(open_month < local_today.month and row.get("~ipo_status1") == "U")
+    open_date = date(year, open_month, open_day)
+
+    def after_open(column: str, previous: date) -> date:
+        month, day = _month_day(row.get(column))
+        candidate = date(previous.year, month, day)
+        if candidate < previous:
+            candidate = date(previous.year + 1, month, day)
+        return candidate
+
+    close_date = after_open("Close", open_date)
+    allotment_date = after_open("BoA Dt", close_date)
+    try:
+        listing_date = after_open("Listing", allotment_date)
+    except ValueError:
+        listing_date = None
+    return open_date, close_date, allotment_date, listing_date
+
+
+def _record_from_row(row: dict, *, request_url: str, now) -> IPORecord:
+    record_id = str(row.get("~id") or "").strip()
+    issuer_name = _text(row.get("~ipo_name"))
+    status_code = _text(row.get("~ipo_status1")).upper()
+    if not record_id or not issuer_name or status_code not in {"U", "O"}:
+        raise ValueError("InvestorGain row is not an active or upcoming IPO")
+    lower_price, upper_price = _price_range(row.get("Price (₹)"))
+    open_date, close_date, allotment_date, listing_date = _event_dates(row, now)
+    detail_path = str(row.get("~urlrewrite_folder_name") or "")
+    issue_type = "SME" if "SME" in _text(row.get("~ipo_category1")).upper() else "MAINBOARD"
+    detail_url = f"{SOURCE_ORIGIN}{detail_path}" if detail_path.startswith("/") else request_url
+    return IPORecord.from_mapping(
+        {
+            "issuer_name": issuer_name,
+            "issue_type": issue_type,
+            "lower_price": lower_price,
+            "upper_price": upper_price,
+            "lot_size": _lot_size(row.get("Lot")),
+            "open_date": open_date,
+            "close_date": close_date,
+            "allotment_date": allotment_date,
+            "listing_date": listing_date,
+            "status": "OPEN" if status_code == "O" else "UPCOMING",
+            "publication_state": "PUBLISHED",
+            "source_url": detail_url,
+        },
+        source_key=PROVIDER_KEY,
+        source_record_id=record_id,
+        observed_at=_observed_at(row, now),
+    )
+
+
+@transaction.atomic
+def _upsert_ipo(record: IPORecord, raw: dict) -> tuple[IPO, bool]:
+    defaults = record.model_fields()
+    ipo, created = IPO.objects.update_or_create(
+        source_key=record.source_key,
+        source_record_id=record.source_record_id,
+        defaults=defaults,
+    )
+    link, _ = IPOSourceLink.objects.get_or_create(
+        ipo=ipo, source_key=record.source_key, source_record_id=record.source_record_id
+    )
+    raw_hash = hashlib.sha256(
+        json.dumps(raw, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    IPOSourceSnapshot.objects.get_or_create(
+        link=link,
+        payload_hash=raw_hash,
+        observed_at=record.source_observed_at,
+        defaults={"payload": {"normalized": record.payload(), "raw": raw}},
+    )
+    return ipo, created
+
+
 def _rows_by_name(payload: dict):
     rows = {}
     for row in payload["reportTableData"]:
@@ -125,14 +235,6 @@ def _match_row(ipo: IPO, rows: dict[str, dict]):
 
 
 def sync_investorgain_gmp(*, manual: bool = False) -> dict:
-    relevant = list(
-        IPO.objects.filter(
-            publication_state=IPO.PublicationState.PUBLISHED,
-            status__in=[IPO.Status.OPEN, IPO.Status.UPCOMING],
-        )
-    )
-    if not relevant:
-        return {"status": "NO_RELEVANT_IPOS", "provider": PROVIDER_KEY, "requested": 0}
     state, _ = GMPProviderState.objects.get_or_create(provider_key=PROVIDER_KEY)
     if not state.enabled:
         return {"status": "DISABLED", "provider": PROVIDER_KEY, "requested": 0}
@@ -161,6 +263,25 @@ def sync_investorgain_gmp(*, manual: bool = False) -> dict:
             "error": type(exc).__name__,
         }
 
+    imported = skipped = 0
+    for row in payload["reportTableData"]:
+        if not isinstance(row, dict):
+            skipped += 1
+            continue
+        try:
+            record = _record_from_row(row, request_url=request_url, now=now)
+            _, created_ipo = _upsert_ipo(record, row)
+            imported += int(created_ipo)
+        except (TypeError, ValueError, InvalidOperation):
+            skipped += 1
+
+    relevant = list(
+        IPO.objects.filter(
+            source_key=PROVIDER_KEY,
+            publication_state=IPO.PublicationState.PUBLISHED,
+            status__in=[IPO.Status.OPEN, IPO.Status.UPCOMING],
+        )
+    )
     rows = _rows_by_name(payload)
     created = matched = 0
     for ipo in relevant:
@@ -212,6 +333,8 @@ def sync_investorgain_gmp(*, manual: bool = False) -> dict:
         "status": "OK",
         "provider": PROVIDER_KEY,
         "requested": 1,
+        "imported": imported,
+        "skipped": skipped,
         "matched": matched,
         "created": created,
     }
