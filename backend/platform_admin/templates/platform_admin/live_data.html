@@ -2,7 +2,7 @@
 {% block content %}
 <p><a href="{% url 'founder_admin:index' %}">Staff home</a> · <a href="{% url 'founder_admin:ipo-exceptions' %}">Conflicts</a> · <a href="{% url 'founder_admin:gmp-providers' %}">GMP providers</a></p>
 <h1>Live data</h1>
-<p>{{ published_count }} published canonical IPOs. Licensed NSE and InvestorGain refresh slots are 12:01 AM and hourly from 9:00 AM through 7:00 PM IST. Manual refreshes outside those slots are skipped.</p>
+<p>{{ published_count }} published canonical IPOs. Automatic NSE and InvestorGain refreshes run at 12:01 AM and hourly from 9:00 AM through 7:00 PM IST. Founder Admin manual refreshes may run at any time and are audit logged.</p>
 {% if sync_result %}<div role="status" aria-live="polite">{% for provider, result in sync_result.items %}<p>{{ provider|upper }}: {{ result.status }}{% if result.discovered != None %} · {{ result.discovered }} discovered, {{ result.ready }} ready, {{ result.changed }} changed{% endif %}{% if result.fetched %} · {{ result.fetched }} fetched{% endif %}{% if result.reason %} · {{ result.reason }}{% endif %}{% if result.error %} · {{ result.error }}{% endif %}</p>{% endfor %}</div>{% endif %}
 <form method="post">{% csrf_token %}
   <button type="submit" name="action" value="sync_all">Sync all now</button>

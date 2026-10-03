@@ -109,9 +109,22 @@ class FounderAdminSite(AdminSite):
         if request.method == "POST":
             action = request.POST.get("action")
             if action in {"sync_all", "sync_nse", "sync_bse", "sync_documents", "sync_sebi"}:
-                sync_result = run_ipo_sync(provider=action.removeprefix("sync_"))
+                provider = action.removeprefix("sync_")
+                sync_result = run_ipo_sync(provider=provider, manual=True)
+                record_event(
+                    action="admin.provider_manual_refresh",
+                    target=request.user,
+                    actor=request.user,
+                    metadata={"provider": provider},
+                )
             elif action == "sync_gmp":
-                sync_result = {"gmp": sync_gmp_sources()}
+                sync_result = {"gmp": sync_gmp_sources(manual=True)}
+                record_event(
+                    action="admin.provider_manual_refresh",
+                    target=request.user,
+                    actor=request.user,
+                    metadata={"provider": "investorgain"},
+                )
             elif action in {"enable_sebi", "disable_sebi"}:
                 state, _ = IPOProviderSyncState.objects.get_or_create(source_key="sebi")
                 state.enabled = request.POST["action"] == "enable_sebi"

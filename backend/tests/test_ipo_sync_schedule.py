@@ -80,6 +80,19 @@ def test_nse_manual_sync_outside_the_window_does_not_fetch(monkeypatch):
 
 
 @pytest.mark.django_db
+def test_founder_manual_nse_sync_bypasses_the_automatic_schedule(monkeypatch):
+    monkeypatch.setenv("LOTNEETI_NSE_SOURCE_RIGHTS_REFERENCE", "synthetic-rights-reference")
+    monkeypatch.setenv("LOTNEETI_IPO_SOURCE_CACHE_DIR", "/private/tmp/synthetic-ipo-cache")
+    with (
+        patch("ipos.tasks.timezone.now", return_value=ist(20)),
+        patch("ipos.tasks.call_command") as call_command,
+    ):
+        result = _sync_nse(refresh_discovery=True, manual=True)
+    assert result["status"] == "OK"
+    call_command.assert_called_once()
+
+
+@pytest.mark.django_db
 def test_daily_sources_are_isolated_when_nse_is_not_configured(monkeypatch):
     monkeypatch.delenv("LOTNEETI_NSE_SOURCE_RIGHTS_REFERENCE", raising=False)
     monkeypatch.delenv("LOTNEETI_IPO_SOURCE_CACHE_DIR", raising=False)
@@ -152,6 +165,32 @@ def test_daily_investorgain_sync_stores_an_observation_and_is_idempotent():
     assert observation.value_per_share == Decimal("76")
     assert observation.source_record_id == "321"
     assert observation.source_url == "https://www.investorgain.com/gmp/orient-cables-ipo/321/"
+
+
+@pytest.mark.django_db
+def test_founder_manual_gmp_sync_bypasses_the_automatic_schedule():
+    make_gmp_ipo()
+    payload = {
+        "reportTableData": [
+            {
+                "~id": 321,
+                "~ipo_name": "Orient Cables",
+                "GMP": "&#8377;<b>76</b> (27.94%)",
+                "Updated-On": "28-Sep 23:37",
+                "~urlrewrite_folder_name": "/gmp/orient-cables-ipo/321/",
+            }
+        ]
+    }
+    with (
+        patch("ipos.investorgain_gmp.timezone.now", return_value=ist(20)),
+        patch(
+            "ipos.investorgain_gmp.fetch_payload",
+            return_value=("https://example.test", payload),
+        ),
+    ):
+        result = sync_gmp_sources(manual=True)
+    assert result["status"] == "OK"
+    assert result["created"] == 1
 
 
 @pytest.mark.django_db

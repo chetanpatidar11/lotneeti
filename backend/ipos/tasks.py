@@ -62,7 +62,7 @@ def sync_sebi_filings():
     return _locked("sebi", run)
 
 
-def _sync_nse(*, refresh_discovery: bool) -> dict:
+def _sync_nse(*, refresh_discovery: bool, manual: bool = False) -> dict:
     state, _ = IPOProviderSyncState.objects.get_or_create(source_key="nse")
     if not state.enabled:
         return {"status": "DISABLED", "provider": "nse"}
@@ -74,9 +74,14 @@ def _sync_nse(*, refresh_discovery: bool) -> dict:
             "provider": "nse",
             "reason": "Founder source-use reference and private source cache are required",
         }
-    slot_error, state = reserve_refresh_slot("nse")
-    if slot_error:
-        return slot_error
+    if manual:
+        state.last_status = "RUNNING"
+        state.last_safe_error = ""
+        state.save(update_fields=["last_status", "last_safe_error"])
+    else:
+        slot_error, state = reserve_refresh_slot("nse")
+        if slot_error:
+            return slot_error
     output = StringIO()
     try:
         call_command(
@@ -132,14 +137,16 @@ def _sync_nse(*, refresh_discovery: bool) -> dict:
     }
 
 
-def run_ipo_sync(*, provider: str = "all") -> dict:
-    """Use the same bounded pipeline for beat, Founder Admin, and CLI."""
+def run_ipo_sync(*, provider: str = "all", manual: bool = False) -> dict:
+    """Run IPO sources; only Founder Admin requests may bypass scheduled slots."""
 
     if provider not in {"all", "nse", "bse", "documents", "sebi"}:
         raise ValueError("Unsupported provider")
     results = {}
     if provider in {"all", "nse", "documents"}:
-        results["nse"] = _sync_nse(refresh_discovery=provider != "documents")
+        results["nse"] = _sync_nse(
+            refresh_discovery=provider != "documents", manual=manual
+        )
     if provider in {"all", "bse"}:
         results["bse"] = {
             "status": "PERMISSION_REQUIRED",
@@ -169,10 +176,10 @@ def sync_official_ipo_sources():
 
 
 @shared_task(name="ipos.tasks.sync_gmp_sources")
-def sync_gmp_sources():
+def sync_gmp_sources(*, manual: bool = False):
     from ipos.investorgain_gmp import sync_investorgain_gmp
 
-    return _locked("gmp", sync_investorgain_gmp)
+    return _locked("gmp", lambda: sync_investorgain_gmp(manual=manual))
 
 
 @shared_task(name="ipos.tasks.detect_stale_data")

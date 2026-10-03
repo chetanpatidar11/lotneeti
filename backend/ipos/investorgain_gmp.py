@@ -16,7 +16,7 @@ import certifi
 from django.utils import timezone
 
 from ipos.licensed_source_schedule import reserve_refresh_slot
-from ipos.models import IPO, GMPObservation, GMPProviderState
+from ipos.models import IPO, GMPObservation, GMPProviderState, IPOProviderSyncState
 from ipos.provider_health import record_provider_failure, record_provider_success
 
 PROVIDER_KEY = "investorgain"
@@ -124,7 +124,7 @@ def _match_row(ipo: IPO, rows: dict[str, dict]):
     return candidates[0] if len(candidates) == 1 else None
 
 
-def sync_investorgain_gmp() -> dict:
+def sync_investorgain_gmp(*, manual: bool = False) -> dict:
     relevant = list(
         IPO.objects.filter(
             publication_state=IPO.PublicationState.PUBLISHED,
@@ -138,9 +138,15 @@ def sync_investorgain_gmp() -> dict:
         return {"status": "DISABLED", "provider": PROVIDER_KEY, "requested": 0}
 
     now = timezone.now()
-    slot_error, sync_state = reserve_refresh_slot(PROVIDER_KEY, at=now)
-    if slot_error:
-        return slot_error
+    if manual:
+        sync_state, _ = IPOProviderSyncState.objects.get_or_create(source_key=PROVIDER_KEY)
+        sync_state.last_status = "RUNNING"
+        sync_state.last_safe_error = ""
+        sync_state.save(update_fields=["last_status", "last_safe_error"])
+    else:
+        slot_error, sync_state = reserve_refresh_slot(PROVIDER_KEY, at=now)
+        if slot_error:
+            return slot_error
     try:
         request_url, payload = fetch_payload(now)
     except Exception as exc:
